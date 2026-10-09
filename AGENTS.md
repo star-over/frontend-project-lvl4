@@ -22,6 +22,7 @@
 - Контракт проверки Хекслета требует `src/init.jsx`: он остаётся реэкспортом из `src/init.tsx`. Тест `__tests__/smoke.test.tsx` импортирует именно `src/init.jsx`.
 - Линт и формат — oxlint + oxfmt с конфигами из эталонной заготовки (канон Хекслета). `make lint` = typecheck + oxlint + oxfmt.
 - Версии зависимостей — последние на момент установки.
+- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушка `matchMedia` для Mantine). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 
 ## Шаги

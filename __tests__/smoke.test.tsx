@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { renderToString } from "react-dom/server";
 import type { Socket } from "socket.io-client";
 import { expect, test } from "vitest";
