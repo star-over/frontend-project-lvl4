@@ -11,14 +11,18 @@ const renderAt = (path: string) => {
 test("на /login показывается форма входа", () => {
   renderAt("/login");
 
-  expect(screen.getByRole("heading", { name: "Login" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Войти" })).toBeTruthy();
+  expect(screen.getByLabelText("Ваш ник")).toBeTruthy();
+  expect(screen.getByLabelText("Пароль")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Войти" }).getAttribute("type")).toBe("submit");
   expect(screen.getByRole("link", { name: "Регистрация" }).getAttribute("href")).toBe("/signup");
 });
 
-test("неизвестный адрес показывает 404", () => {
+test("неизвестный адрес показывает 404 со ссылкой на главную", () => {
   renderAt("/no-such-page");
 
-  expect(screen.getByText("404 - Not found page")).toBeTruthy();
+  expect(screen.getByText("Страница не найдена")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "на главную страницу" }).getAttribute("href")).toBe("/");
 });
 
 test("логотип в шапке ведёт на главную", () => {
