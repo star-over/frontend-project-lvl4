@@ -1,7 +1,6 @@
 ### Hexlet tests and linter status:
-[![Actions Status](https://github.com/FFire/frontend-project-lvl4/workflows/hexlet-check/badge.svg)](https://github.com/FFire/frontend-project-lvl4/actions)
+[![Actions Status](https://github.com/star-over/frontend-project-lvl4/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/star-over/frontend-project-lvl4/actions)
 
-# Hexlet level 4 frontend
+# Hexlet Chat
 
-This project on the web [Hexlet level 4 frontend](https://belan-project-lvl4.herokuapp.com/).
-
+Деплой: https://frontend-project-lvl4-u6e4.onrender.com
