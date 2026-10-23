@@ -1,5 +1,7 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+
+import { useAuth } from "../src/stores/auth.ts";
 
 // jsdom не реализует matchMedia, а Mantine читает через него цветовую схему.
 window.matchMedia = (query) =>
@@ -12,5 +14,8 @@ window.matchMedia = (query) =>
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  useAuth.setState({ user: null });
+  localStorage.clear();
   window.history.pushState({}, "", "/");
 });
