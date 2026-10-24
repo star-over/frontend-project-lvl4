@@ -7,7 +7,6 @@ import { QueryClient } from "@tanstack/react-query";
 import { type Channel, type Message, removeChannel } from "../src/api.ts";
 import init from "../src/init.tsx";
 import { useAuth } from "../src/stores/auth.ts";
-import { useUi } from "../src/stores/ui.ts";
 import { fakeSocket } from "./helpers.ts";
 
 // Сервер в памяти: отвечает на запросы каналов так же, как @hexlet/chat-server.
@@ -141,7 +140,6 @@ test("удаление с подтверждением уводит в кана�
   expect(await screen.findByRole("heading", { name: "# general" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "# custom" })).toBeNull();
   expect(screen.queryByText(/В своём/)).toBeNull();
-  expect(useUi.getState().currentChannelId).toBeNull();
   expect(await screen.findByText("Канал удалён")).toBeTruthy();
 });
 

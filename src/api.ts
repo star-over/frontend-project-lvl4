@@ -10,10 +10,12 @@ import {
 
 import { i18n } from "./i18n.ts";
 import { useAuth } from "./stores/auth.ts";
-import { useUi } from "./stores/ui.ts";
 
 export type Channel = { id: string; name: string; removable: boolean };
 export type Message = { id: string; body: string; channelId: string; username: string };
+
+const channelsKey = ["channels"];
+const messagesKey = ["messages"];
 
 const request = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
   const token = useAuth.getState().user?.token;
@@ -59,9 +61,12 @@ const notifySuccess = (message: string) => notifications.show({ color: "green", 
 //   что делать с формой, — исключение из mutateAsync он гасит сам.
 // Один повтор запроса вместо трёх: ошибка видна через секунду, а не через семь;
 // после обрыва связи данные и так перечитываются по reconnect сокета.
+// Данные не устаревают сами (staleTime: Infinity): изменения приходят событиями сокета,
+// а пропущенные — перечитываются по reconnect. Иначе каждый новый подписчик на
+// useChannels/useMessages перезапрашивал бы сервер.
 export const createQueryClient = () =>
   new QueryClient({
-    defaultOptions: { queries: { retry: 1 } },
+    defaultOptions: { queries: { retry: 1, staleTime: Infinity } },
     queryCache: new QueryCache({
       onError: () =>
         notifications.show({
@@ -76,40 +81,38 @@ export const createQueryClient = () =>
   });
 
 export const useChannels = () =>
-  useQuery({ queryKey: ["channels"], queryFn: () => request<Channel[]>("GET", "/channels") });
+  useQuery({ queryKey: channelsKey, queryFn: () => request<Channel[]>("GET", "/channels") });
 
 export const useMessages = () =>
-  useQuery({ queryKey: ["messages"], queryFn: () => request<Message[]>("GET", "/messages") });
+  useQuery({ queryKey: messagesKey, queryFn: () => request<Message[]>("GET", "/messages") });
 
 // Сообщение приходит дважды: ответом на POST и событием сокета. Дубль отбрасывается по id.
 export const addMessage = (queryClient: QueryClient, message: Message) =>
-  queryClient.setQueryData<Message[]>(["messages"], (messages) =>
+  queryClient.setQueryData<Message[]>(messagesKey, (messages) =>
     messages && !messages.some(({ id }) => id === message.id) ? [...messages, message] : messages,
   );
 
 // Изменения каналов тоже приходят и ответом на запрос, и событием сокета —
 // обе ветки пишут в кеш одними и теми же функциями, повтор ничего не меняет.
 export const addChannel = (queryClient: QueryClient, channel: Channel) =>
-  queryClient.setQueryData<Channel[]>(["channels"], (channels) =>
+  queryClient.setQueryData<Channel[]>(channelsKey, (channels) =>
     channels && !channels.some(({ id }) => id === channel.id) ? [...channels, channel] : channels,
   );
 
 export const renameChannel = (queryClient: QueryClient, channel: Channel) =>
-  queryClient.setQueryData<Channel[]>(["channels"], (channels) =>
+  queryClient.setQueryData<Channel[]>(channelsKey, (channels) =>
     channels?.map((item) => (item.id === channel.id ? channel : item)),
   );
 
-// Вместе с каналом уходят его сообщения; кто был в нём — попадает в канал по умолчанию.
+// Вместе с каналом уходят его сообщения. Кто был в нём, попадает в канал по умолчанию
+// без участия кэша — это правило useCurrentChannel.
 export const removeChannel = (queryClient: QueryClient, { id }: Pick<Channel, "id">) => {
-  queryClient.setQueryData<Channel[]>(["channels"], (channels) =>
+  queryClient.setQueryData<Channel[]>(channelsKey, (channels) =>
     channels?.filter((channel) => channel.id !== id),
   );
-  queryClient.setQueryData<Message[]>(["messages"], (messages) =>
+  queryClient.setQueryData<Message[]>(messagesKey, (messages) =>
     messages?.filter(({ channelId }) => channelId !== id),
   );
-  if (useUi.getState().currentChannelId === id) {
-    useUi.getState().setCurrentChannel(null);
-  }
 };
 
 export const useAddChannel = () => {
@@ -118,7 +121,6 @@ export const useAddChannel = () => {
     mutationFn: (name: string) => request<Channel>("POST", "/channels", { name }),
     onSuccess: (channel) => {
       addChannel(queryClient, channel);
-      useUi.getState().setCurrentChannel(channel.id);
       notifySuccess(i18n.t("channels.toasts.added"));
     },
   });

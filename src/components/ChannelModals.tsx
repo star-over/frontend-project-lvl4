@@ -68,9 +68,16 @@ const ChannelNameForm = (props: {
   );
 };
 
+// Создатель канала сразу переходит в него; остальные узнают о канале из сокета и остаются где были.
 const AddChannel = () => {
   const addChannel = useAddChannel();
-  return <ChannelNameForm initialName="" onSubmit={(name) => addChannel.mutateAsync(name)} />;
+  const setCurrentChannel = useUi((state) => state.setCurrentChannel);
+  return (
+    <ChannelNameForm
+      initialName=""
+      onSubmit={async (name) => setCurrentChannel((await addChannel.mutateAsync(name)).id)}
+    />
+  );
 };
 
 const RenameChannel = ({ channel }: { channel: Channel }) => {

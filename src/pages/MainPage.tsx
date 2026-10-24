@@ -17,19 +17,19 @@ import { useChannels, useMessages } from "../api.ts";
 import { ChannelList } from "../components/ChannelList.tsx";
 import { ChannelModals } from "../components/ChannelModals.tsx";
 import { MessageForm } from "../components/MessageForm.tsx";
-import { useUi } from "../stores/ui.ts";
+import { useCurrentChannel } from "../stores/ui.ts";
 
 export const MainPage = () => {
   const { t } = useTranslation();
   const channels = useChannels();
   const messages = useMessages();
-  const currentChannelId = useUi((state) => state.currentChannelId);
+  const current = useCurrentChannel();
   const feed = useRef<HTMLDivElement>(null);
 
   // Новое сообщение или смена канала — лента прокручивается к последнему сообщению.
   useEffect(() => {
     feed.current?.scrollTo({ top: feed.current.scrollHeight });
-  }, [messages.data, currentChannelId]);
+  }, [messages.data, current?.id]);
 
   if (channels.isPending || messages.isPending) {
     return (
@@ -46,14 +46,13 @@ export const MainPage = () => {
     );
   }
 
-  const current = channels.data.find(({ id }) => id === currentChannelId) ?? channels.data[0];
   const channelMessages = messages.data.filter(({ channelId }) => channelId === current?.id);
 
   return (
     <Container size="xl" py="md">
       <Paper withBorder shadow="sm" h="calc(100vh - 100px)">
         <Flex h="100%">
-          <ChannelList channels={channels.data} currentId={current?.id} />
+          <ChannelList />
           {/* miw={0} даёт колонке сжиматься, иначе длинное имя канала распирает вёрстку. */}
           <Flex direction="column" flex={1} miw={0}>
             <Box p="md" bg="gray.0">

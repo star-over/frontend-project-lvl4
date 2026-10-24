@@ -1,13 +1,13 @@
 import { ActionIcon, Group, Menu, NavLink, ScrollArea, Stack, Text, Title } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 
-import type { Channel } from "../api.ts";
-import { useUi } from "../stores/ui.ts";
+import { useChannels } from "../api.ts";
+import { useCurrentChannel, useUi } from "../stores/ui.ts";
 
-type Props = { channels: Channel[]; currentId: string | undefined };
-
-export const ChannelList = ({ channels, currentId }: Props) => {
+export const ChannelList = () => {
   const { t } = useTranslation();
+  const channels = useChannels().data ?? [];
+  const currentId = useCurrentChannel()?.id;
   const setCurrentChannel = useUi((state) => state.setCurrentChannel);
   const openModal = useUi((state) => state.openModal);
 
