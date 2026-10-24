@@ -22,6 +22,9 @@ develop: ## Запустить сервер и dev-сервер вместе
 test: i18n-check ## Прогнать тесты (вместе с проверкой переводов)
 	npx vitest run
 
+mutation: ## Мутационное тестирование логики (Stryker, долго; отчёт — reports/mutation)
+	npx stryker run
+
 i18n-check: ## Переводы: нет захардкоженных строк, все ключи из кода есть в словаре
 	npx i18next-cli lint
 	npx i18next-cli status
@@ -38,4 +41,4 @@ lint-fix: ## Исправить формат и автоисправимые о�
 	npx oxfmt .
 	npx oxlint --fix .
 
-.PHONY: help install build start start-frontend develop test i18n-check i18n-extract lint lint-fix
+.PHONY: help install build start start-frontend develop test mutation i18n-check i18n-extract lint lint-fix

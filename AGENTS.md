@@ -39,6 +39,9 @@
   - `fetch` по умолчанию — `createServer()`: сервер в памяти с состоянием, отвечает как `@hexlet/chat-server` (каналы, сообщения, вход `admin`/`admin`, регистрация, `offline`). Нестандартный ответ — свой `vi.fn<typeof fetch>`.
   - `emit(event, payload)` из `renderApp` — событие сокета или менеджера (`reconnect`).
   - Правила вне React (функции кеша в `src/api.ts`, `src/channelName.ts`) — property-based тесты на fast-check (`test.prop` из `@fast-check/vitest`): свойства вместо примеров — повтор события не меняет кеш, id не повторяются, после удаления канала нет его сообщений, границы длины имени. Интерфейс и склонения проверяются примерами.
+  - `make mutation` — Stryker (`stryker.config.mjs`) по логике вне React: `src/api.ts`, `src/channelName.ts`, `src/profanity.ts`, `src/stores/`. Запуск по требованию (~2 мин), не в `make test`; отчёт — `reports/mutation/index.html`. Выживший мутант — повод добавить проверку, а не цель «100 %»: строки цветов и ключи кеша убивать не нужно.
+    - TS 7 без JS API: переписывание tsconfig в Stryker отключено (`tsconfigFile: ""`).
+    - Stryker находит тесты по имени, а `test.prop` дописывает к нему seed — конфиг задаёт `FC_SEED`, `setup.ts` передаёт его в `fc.configureGlobal`.
   - Исключение — `__tests__/smoke.test.tsx`: повторяет контракт проверки Хекслета (импорт `src/init.jsx`, свой сокет).
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 

@@ -1,3 +1,4 @@
+import { fc } from "@fast-check/vitest";
 import { notifications } from "@mantine/notifications";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
@@ -23,6 +24,9 @@ window.ResizeObserver = class {
 
 // Лента прокручивается к последнему сообщению, а jsdom не умеет scrollTo у элементов.
 Element.prototype.scrollTo = () => {};
+
+// Seed property-тестов можно зафиксировать (так делает make mutation), иначе он случайный.
+if (process.env.FC_SEED) fc.configureGlobal({ seed: Number(process.env.FC_SEED) });
 
 afterEach(() => {
   cleanup();
