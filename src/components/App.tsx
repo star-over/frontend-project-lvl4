@@ -11,6 +11,7 @@ import { MainPage } from "../pages/MainPage.tsx";
 import { NotFoundPage } from "../pages/NotFoundPage.tsx";
 import { SignupPage } from "../pages/SignupPage.tsx";
 import { useAuth } from "../stores/auth.ts";
+import { useUi } from "../stores/ui.ts";
 import { NavMenu } from "./NavMenu.tsx";
 
 // Стили подключаются здесь, а не в index.tsx: проверка монтирует приложение из init.
@@ -21,9 +22,12 @@ import "@mantine/notifications/styles.css";
 // Поднимать App можно только через init — и в продакшене, и в тестах.
 export const App = ({ queryClient }: { queryClient: QueryClient }) => {
   const user = useAuth((state) => state.user);
-  // После выхода кеш чистится, чтобы следующий пользователь не увидел чужие данные.
+  // Конец сессии (выход или отозванный токен): всё клиентское состояние прежнего
+  // пользователя сбрасывается — кэш запросов и UI (текущий канал, открытая модалка).
   useEffect(() => {
-    if (!user) queryClient.clear();
+    if (user) return;
+    queryClient.clear();
+    useUi.setState(useUi.getInitialState());
   }, [user, queryClient]);
 
   return (

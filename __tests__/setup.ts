@@ -26,8 +26,8 @@ Element.prototype.scrollTo = () => {};
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  useAuth.setState({ user: null });
-  useUi.setState({ currentChannelId: null });
+  useAuth.setState(useAuth.getInitialState());
+  useUi.setState(useUi.getInitialState());
   localStorage.clear();
   window.history.pushState({}, "", "/");
 });

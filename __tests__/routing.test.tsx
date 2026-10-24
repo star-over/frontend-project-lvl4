@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
@@ -29,6 +29,22 @@ test("с токеном открывается главная, «Выйти» р
   screen.getByRole("button", { name: "Выйти" }).click();
 
   expect(useAuth.getState().user).toBeNull();
+});
+
+test("после выхода следующий вход начинается с чистого листа", async () => {
+  const { fetchMock } = await renderApp({ path: "/", user: "admin" });
+  fireEvent.click(await screen.findByRole("button", { name: "# random" }));
+  expect(screen.getByRole("heading", { name: "# random" })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Выйти" }));
+  fireEvent.change(await screen.findByLabelText("Ваш ник"), { target: { value: "admin" } });
+  fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "admin" } });
+  fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+
+  // Открыт канал по умолчанию, а не выбранный до выхода; каналы загружены заново.
+  expect(await screen.findByRole("heading", { name: "# general" })).toBeTruthy();
+  const channelLoads = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/channels"));
+  expect(channelLoads).toHaveLength(2);
 });
 
 test("с токеном /login перенаправляет на главную", async () => {
