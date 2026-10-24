@@ -1,8 +1,7 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { useAuth } from "../src/stores/auth.ts";
-import { renderApp } from "./helpers.ts";
+import { renderApp, storedUser } from "./helpers.ts";
 
 test("на /login показывается форма входа", async () => {
   await renderApp({ path: "/login" });
@@ -28,7 +27,7 @@ test("с токеном открывается главная, «Выйти» р
   expect(window.location.pathname).toBe("/");
   screen.getByRole("button", { name: "Выйти" }).click();
 
-  expect(useAuth.getState().user).toBeNull();
+  expect(storedUser()).toBeNull();
 });
 
 test("после выхода следующий вход начинается с чистого листа", async () => {
@@ -65,4 +64,26 @@ test("логотип в шапке ведёт на главную", async () => 
   await renderApp({ path: "/login" });
 
   expect(screen.getByRole("link", { name: "Hexlet Chat" }).getAttribute("href")).toBe("/");
+});
+
+// Проверка Хекслета зовёт init много раз на одной странице и между тестами чистит
+// localStorage: прошлый запуск не должен донести вход, канал, модалку или уведомление.
+test("новый запуск init не помнит состояние прошлого", async () => {
+  const { emit } = await renderApp({ path: "/", user: "admin" });
+  fireEvent.click(await screen.findByRole("button", { name: "# random" }));
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  await screen.findByRole("dialog");
+  await emit("disconnect", "transport close");
+  expect(screen.getByText("Нет соединения с сервером")).toBeTruthy();
+
+  cleanup();
+  localStorage.clear();
+  await renderApp({ path: "/" });
+  expect(window.location.pathname).toBe("/login");
+
+  cleanup();
+  await renderApp({ path: "/", user: "admin" });
+  expect(await screen.findByRole("heading", { name: "# general" })).toBeTruthy();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByText("Нет соединения с сервером")).toBeNull();
 });

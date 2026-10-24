@@ -1,8 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { useAuth } from "../src/stores/auth.ts";
-import { createServer, holdWrites, renderApp } from "./helpers.ts";
+import { createServer, holdWrites, renderApp, storedUser } from "./helpers.ts";
 
 const logInAs = async (username: string, password: string, { offline = false } = {}) => {
   const app = await renderApp({ path: "/login", fetch: createServer({ offline }) });
@@ -23,7 +22,7 @@ test("успешный вход сохраняет токен в localStorage и
       body: JSON.stringify({ username: "admin", password: "admin" }),
     }),
   );
-  expect(useAuth.getState().user).toEqual({ token: "jwt", username: "admin" });
+  expect(storedUser()).toEqual({ token: "jwt", username: "admin" });
   expect(localStorage.getItem("auth")).toContain("jwt");
 });
 
@@ -32,7 +31,7 @@ test("неверный пароль показывает ошибку в фор�
 
   expect(await screen.findByText("Неверные имя пользователя или пароль")).toBeTruthy();
   expect(window.location.pathname).toBe("/login");
-  expect(useAuth.getState().user).toBeNull();
+  expect(storedUser()).toBeNull();
   // Ожидаемый отказ разбирает форма — общего уведомления об ошибке нет.
   expect(screen.queryByText("Ошибка соединения")).toBeNull();
 });

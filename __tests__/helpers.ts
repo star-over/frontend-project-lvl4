@@ -4,7 +4,6 @@ import { type Mock, vi } from "vitest";
 
 import type { Channel, Message } from "../src/api.ts";
 import init from "../src/init.tsx";
-import { useAuth } from "../src/stores/auth.ts";
 
 type Handler = (payload?: unknown) => void;
 
@@ -99,6 +98,10 @@ export const holdWrites = (fetch = createServer()) => {
   return { fetch: held, release };
 };
 
+// Пользователь, сохранённый между перезагрузками (persist в localStorage), — как видит его init.
+export const storedUser = () =>
+  JSON.parse(localStorage.getItem("auth") ?? "null")?.state.user ?? null;
+
 type RenderOptions = { path?: string; user?: string; fetch?: Mock<typeof fetch> };
 
 // Единственный способ поднять приложение в тестах — тот же, что в продакшене: init(socket).
@@ -109,7 +112,10 @@ export const renderApp = async ({
   fetch = createServer(),
 }: RenderOptions = {}) => {
   vi.stubGlobal("fetch", fetch);
-  if (user) useAuth.setState({ user: { token: "jwt", username: user } });
+  if (user) {
+    const state = { user: { token: "jwt", username: user } };
+    localStorage.setItem("auth", JSON.stringify({ state, version: 0 }));
+  }
   window.history.pushState({}, "", path);
   const { socket, emit } = fakeSocket();
   render(await init(socket));

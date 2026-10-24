@@ -2,8 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
-import { useAuth } from "../src/stores/auth.ts";
-import { renderApp } from "./helpers.ts";
+import { renderApp, storedUser } from "./helpers.ts";
 
 const fill = (username: string, password: string, confirmPassword: string) => {
   fireEvent.change(screen.getByLabelText("Имя пользователя"), { target: { value: username } });
@@ -63,7 +62,7 @@ test("успешная регистрация логинит и ведёт в ч
   fill("newuser", "123456", "123456");
 
   await waitFor(() => expect(window.location.pathname).toBe("/"));
-  expect(useAuth.getState().user).toEqual({ token: "jwt", username: "newuser" });
+  expect(storedUser()).toEqual({ token: "jwt", username: "newuser" });
   const [, options] = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/signup"))!;
   expect(JSON.parse(String(options?.body))).toEqual({ username: "newuser", password: "123456" });
 });
@@ -76,7 +75,7 @@ test("ответ 409 показывает, что пользователь уж�
   expect(await screen.findByText("Такой пользователь уже существует")).toBeTruthy();
   expect(screen.queryByText("Ошибка соединения")).toBeNull();
   expect(window.location.pathname).toBe("/signup");
-  expect(useAuth.getState().user).toBeNull();
+  expect(storedUser()).toBeNull();
 });
 
 test("сбой сервера при регистрации — «Ошибка соединения», форма на месте", async () => {

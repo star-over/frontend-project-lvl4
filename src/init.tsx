@@ -1,15 +1,25 @@
-import { notifications } from "@mantine/notifications";
+import { createNotificationsStore, notifications } from "@mantine/notifications";
 import type { Socket } from "socket.io-client";
 
 import { addChannel, addMessage, createQueryClient, removeChannel, renameChannel } from "./api.ts";
 import { App } from "./components/App.tsx";
 import { i18n } from "./i18n.ts";
+import { createAuthStore } from "./stores/auth.ts";
+import type { Stores } from "./stores/context.ts";
+import { createUiStore } from "./stores/ui.ts";
 
 // Сокет приходит параметром, открывает его точка входа: проверка проекта
 // зовёт init со своим сокетом и рендерит то, что он вернул.
 // Обработчики событий сокета живут здесь, вне React, и пишут прямо в кеш запросов.
+// Всё состояние — кеш запросов, вход, UI, уведомления — создаётся здесь на каждый запуск,
+// а не на уровне модуля: проверка зовёт init много раз на одной странице.
 const init = async (socket: Socket) => {
-  const queryClient = createQueryClient();
+  const stores: Stores = {
+    auth: createAuthStore(),
+    ui: createUiStore(),
+    notifications: createNotificationsStore(),
+  };
+  const queryClient = createQueryClient(stores.notifications);
 
   socket.on("newMessage", (message) => addMessage(queryClient, message));
   socket.on("newChannel", (channel) => addChannel(queryClient, channel));
@@ -20,18 +30,16 @@ const init = async (socket: Socket) => {
   // Закрытие сокета самим клиентом (выход, конец тестов) — не обрыв сети.
   socket.on("disconnect", (reason) => {
     if (reason === "io client disconnect") return;
-    notifications.show({
-      id: "offline",
-      color: "red",
-      autoClose: false,
-      message: i18n.t("errors.offline"),
-    });
+    notifications.show(
+      { id: "offline", color: "red", autoClose: false, message: i18n.t("errors.offline") },
+      stores.notifications,
+    );
   });
-  socket.on("connect", () => notifications.hide("offline"));
+  socket.on("connect", () => notifications.hide("offline", stores.notifications));
   // За время обрыва связи события терялись — после переподключения данные перечитываются.
   socket.io.on("reconnect", () => queryClient.invalidateQueries());
 
-  return <App queryClient={queryClient} />;
+  return <App queryClient={queryClient} stores={stores} />;
 };
 
 export default init;

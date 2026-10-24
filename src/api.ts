@@ -1,4 +1,4 @@
-import { notifications } from "@mantine/notifications";
+import { type NotificationsStore, notifications } from "@mantine/notifications";
 import {
   MutationCache,
   QueryCache,
@@ -9,7 +9,8 @@ import {
 } from "@tanstack/react-query";
 
 import { i18n } from "./i18n.ts";
-import { useAuth } from "./stores/auth.ts";
+import type { AuthStoreApi } from "./stores/auth.ts";
+import { useStores } from "./stores/context.ts";
 
 export type Channel = { id: string; name: string; removable: boolean };
 export type Message = { id: string; body: string; channelId: string; username: string };
@@ -35,8 +36,13 @@ declare module "@tanstack/react-query" {
 }
 
 // Все запросы к серверу. Токен прикладывается, когда пользователь вошёл.
-const request = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
-  const token = useAuth.getState().user?.token;
+const request = async <T>(
+  auth: AuthStoreApi,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> => {
+  const token = auth.getState().user?.token;
   const response = await fetch(`/api/v1${path}`, {
     method,
     headers: {
@@ -47,7 +53,7 @@ const request = async <T>(method: string, path: string, body?: unknown): Promise
   });
   // Токен отозван или протух: без выхода пользователь застрял бы на пустом чате.
   if (response.status === 401) {
-    useAuth.getState().logOut();
+    auth.getState().logOut();
   }
   if (!response.ok) {
     throw new HttpError(response.status);
@@ -60,15 +66,21 @@ type Credentials = { username: string; password: string };
 // Вход и регистрация. Успех — пользователь сохранён. Ожидаемый отказ (неверный пароль —
 // 401, имя занято — 409) приходит вызывающему как HttpError без общего уведомления;
 // сеть и прочие ошибки — «Ошибка соединения», как у всех мутаций.
-export const useAuthenticate = (path: "/login" | "/signup") =>
-  useMutation({
+export const useAuthenticate = (path: "/login" | "/signup") => {
+  const { auth } = useStores();
+  return useMutation({
     mutationFn: (credentials: Credentials) =>
-      request<{ token: string; username: string }>("POST", path, credentials),
-    onSuccess: (user) => useAuth.getState().logIn(user),
+      request<{ token: string; username: string }>(auth, "POST", path, credentials),
+    onSuccess: (user) => auth.getState().logIn(user),
     meta: { expectedStatus: path === "/login" ? 401 : 409 },
   });
+};
 
-const notifySuccess = (message: string) => notifications.show({ color: "green", message });
+// Успех мутации каналов — зелёное уведомление в хранилище уведомлений этого запуска.
+const useNotifySuccess = () => {
+  const store = useStores().notifications;
+  return (message: string) => notifications.show({ color: "green", message }, store);
+};
 
 // Обратная связь по серверу собрана здесь, вызывающим её повторять не нужно:
 // - неудачная загрузка данных — «Ошибка загрузки данных» (id не даёт уведомлениям множиться,
@@ -80,31 +92,40 @@ const notifySuccess = (message: string) => notifications.show({ color: "green", 
 // Данные не устаревают сами (staleTime: Infinity): изменения приходят событиями сокета,
 // а пропущенные — перечитываются по reconnect. Иначе каждый новый подписчик на
 // useChannels/useMessages перезапрашивал бы сервер.
-export const createQueryClient = () =>
+export const createQueryClient = (store: NotificationsStore) =>
   new QueryClient({
     defaultOptions: { queries: { retry: 1, staleTime: Infinity } },
     queryCache: new QueryCache({
       onError: () =>
-        notifications.show({
-          id: "loading-error",
-          color: "red",
-          message: i18n.t("errors.loading"),
-        }),
+        notifications.show(
+          { id: "loading-error", color: "red", message: i18n.t("errors.loading") },
+          store,
+        ),
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
         const expected = mutation.meta?.expectedStatus;
         if (expected && isHttpError(error, expected)) return;
-        notifications.show({ color: "red", message: i18n.t("errors.network") });
+        notifications.show({ color: "red", message: i18n.t("errors.network") }, store);
       },
     }),
   });
 
-export const useChannels = () =>
-  useQuery({ queryKey: channelsKey, queryFn: () => request<Channel[]>("GET", "/channels") });
+export const useChannels = () => {
+  const { auth } = useStores();
+  return useQuery({
+    queryKey: channelsKey,
+    queryFn: () => request<Channel[]>(auth, "GET", "/channels"),
+  });
+};
 
-export const useMessages = () =>
-  useQuery({ queryKey: messagesKey, queryFn: () => request<Message[]>("GET", "/messages") });
+export const useMessages = () => {
+  const { auth } = useStores();
+  return useQuery({
+    queryKey: messagesKey,
+    queryFn: () => request<Message[]>(auth, "GET", "/messages"),
+  });
+};
 
 // Сообщение приходит дважды: ответом на POST и событием сокета. Дубль отбрасывается по id.
 export const addMessage = (queryClient: QueryClient, message: Message) =>
@@ -137,8 +158,10 @@ export const removeChannel = (queryClient: QueryClient, { id }: Pick<Channel, "i
 
 export const useAddChannel = () => {
   const queryClient = useQueryClient();
+  const { auth } = useStores();
+  const notifySuccess = useNotifySuccess();
   return useMutation({
-    mutationFn: (name: string) => request<Channel>("POST", "/channels", { name }),
+    mutationFn: (name: string) => request<Channel>(auth, "POST", "/channels", { name }),
     onSuccess: (channel) => {
       addChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.added"));
@@ -148,9 +171,11 @@ export const useAddChannel = () => {
 
 export const useRenameChannel = () => {
   const queryClient = useQueryClient();
+  const { auth } = useStores();
+  const notifySuccess = useNotifySuccess();
   return useMutation({
     mutationFn: ({ id, name }: Pick<Channel, "id" | "name">) =>
-      request<Channel>("PATCH", `/channels/${id}`, { name }),
+      request<Channel>(auth, "PATCH", `/channels/${id}`, { name }),
     onSuccess: (channel) => {
       renameChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.renamed"));
@@ -160,8 +185,10 @@ export const useRenameChannel = () => {
 
 export const useRemoveChannel = () => {
   const queryClient = useQueryClient();
+  const { auth } = useStores();
+  const notifySuccess = useNotifySuccess();
   return useMutation({
-    mutationFn: (id: string) => request<Pick<Channel, "id">>("DELETE", `/channels/${id}`),
+    mutationFn: (id: string) => request<Pick<Channel, "id">>(auth, "DELETE", `/channels/${id}`),
     onSuccess: (channel) => {
       removeChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.removed"));
@@ -171,8 +198,10 @@ export const useRemoveChannel = () => {
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
+  const { auth } = useStores();
   return useMutation({
-    mutationFn: (message: Omit<Message, "id">) => request<Message>("POST", "/messages", message),
+    mutationFn: (message: Omit<Message, "id">) =>
+      request<Message>(auth, "POST", "/messages", message),
     onSuccess: (message) => addMessage(queryClient, message),
   });
 };

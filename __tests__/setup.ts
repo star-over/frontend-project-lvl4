@@ -1,10 +1,6 @@
 import { fc } from "@fast-check/vitest";
-import { notifications } from "@mantine/notifications";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
-
-import { useAuth } from "../src/stores/auth.ts";
-import { useUi } from "../src/stores/ui.ts";
 
 // jsdom не реализует matchMedia, а Mantine читает через него цветовую схему.
 window.matchMedia = (query) =>
@@ -30,12 +26,8 @@ if (process.env.FC_SEED) fc.configureGlobal({ seed: Number(process.env.FC_SEED) 
 
 afterEach(() => {
   cleanup();
-  // Хранилище уведомлений Mantine глобальное: без очистки тост перетекает в следующий тест.
-  notifications.clean();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  useAuth.setState(useAuth.getInitialState());
-  useUi.setState(useUi.getInitialState());
   localStorage.clear();
   window.history.pushState({}, "", "/");
 });
