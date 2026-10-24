@@ -6,7 +6,7 @@ import { isHttpError, useAuthenticate } from "../api.ts";
 
 export const SignupForm = () => {
   const { t } = useTranslation();
-  const authenticate = useAuthenticate("/signup");
+  const authenticate = useAuthenticate("signup");
   const required = isNotEmpty(t("errors.required"));
   const form = useForm({
     mode: "uncontrolled",

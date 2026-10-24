@@ -8,7 +8,7 @@ type Credentials = { username: string; password: string };
 
 export const LoginForm = () => {
   const { t } = useTranslation();
-  const authenticate = useAuthenticate("/login");
+  const authenticate = useAuthenticate("login");
   const form = useForm<Credentials>({
     mode: "uncontrolled",
     initialValues: { username: "", password: "" },

@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import logo from "../assets/Login.jpeg";
 import { AuthCard } from "../components/AuthCard.tsx";
 import { LoginForm } from "../components/LoginForm.tsx";
+import { pageRoutes } from "../routes.ts";
 
 export const LoginPage = () => {
   const { t } = useTranslation();
@@ -16,7 +17,7 @@ export const LoginPage = () => {
       footer={
         <Text ta="center">
           {t("login.noAccount")}{" "}
-          <Anchor component={Link} to="/signup">
+          <Anchor component={Link} to={pageRoutes.signup()}>
             {t("login.signupLink")}
           </Anchor>
         </Text>

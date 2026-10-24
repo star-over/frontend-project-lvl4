@@ -1,6 +1,7 @@
 import { Anchor, Stack, Text, Title } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { pageRoutes } from "../routes.ts";
 
 export const NotFoundPage = () => {
   const { t } = useTranslation();
@@ -12,7 +13,7 @@ export const NotFoundPage = () => {
       </Title>
       <Text c="dimmed">
         {t("notFound.hint")}{" "}
-        <Anchor component={Link} to="/">
+        <Anchor component={Link} to={pageRoutes.chat()}>
           {t("notFound.homeLink")}
         </Anchor>
       </Text>

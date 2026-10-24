@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 
 import { i18n } from "./i18n.ts";
+import { apiRoutes } from "./routes.ts";
 import type { AuthStoreApi } from "./stores/auth.ts";
 import { useStores } from "./stores/context.ts";
 
@@ -43,7 +44,7 @@ const request = async <T>(
   body?: unknown,
 ): Promise<T> => {
   const token = auth.getState().user?.token;
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(path, {
     method,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -66,13 +67,13 @@ type Credentials = { username: string; password: string };
 // Вход и регистрация. Успех — пользователь сохранён. Ожидаемый отказ (неверный пароль —
 // 401, имя занято — 409) приходит вызывающему как HttpError без общего уведомления;
 // сеть и прочие ошибки — «Ошибка соединения», как у всех мутаций.
-export const useAuthenticate = (path: "/login" | "/signup") => {
+export const useAuthenticate = (action: "login" | "signup") => {
   const { auth } = useStores();
   return useMutation({
     mutationFn: (credentials: Credentials) =>
-      request<{ token: string; username: string }>(auth, "POST", path, credentials),
+      request<{ token: string; username: string }>(auth, "POST", apiRoutes[action](), credentials),
     onSuccess: (user) => auth.getState().logIn(user),
-    meta: { expectedStatus: path === "/login" ? 401 : 409 },
+    meta: { expectedStatus: action === "login" ? 401 : 409 },
   });
 };
 
@@ -115,7 +116,7 @@ export const useChannels = () => {
   const { auth } = useStores();
   return useQuery({
     queryKey: channelsKey,
-    queryFn: () => request<Channel[]>(auth, "GET", "/channels"),
+    queryFn: () => request<Channel[]>(auth, "GET", apiRoutes.channels()),
   });
 };
 
@@ -123,7 +124,7 @@ export const useMessages = () => {
   const { auth } = useStores();
   return useQuery({
     queryKey: messagesKey,
-    queryFn: () => request<Message[]>(auth, "GET", "/messages"),
+    queryFn: () => request<Message[]>(auth, "GET", apiRoutes.messages()),
   });
 };
 
@@ -161,7 +162,7 @@ export const useAddChannel = () => {
   const { auth } = useStores();
   const notifySuccess = useNotifySuccess();
   return useMutation({
-    mutationFn: (name: string) => request<Channel>(auth, "POST", "/channels", { name }),
+    mutationFn: (name: string) => request<Channel>(auth, "POST", apiRoutes.channels(), { name }),
     onSuccess: (channel) => {
       addChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.added"));
@@ -175,7 +176,7 @@ export const useRenameChannel = () => {
   const notifySuccess = useNotifySuccess();
   return useMutation({
     mutationFn: ({ id, name }: Pick<Channel, "id" | "name">) =>
-      request<Channel>(auth, "PATCH", `/channels/${id}`, { name }),
+      request<Channel>(auth, "PATCH", apiRoutes.channel(id), { name }),
     onSuccess: (channel) => {
       renameChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.renamed"));
@@ -188,7 +189,7 @@ export const useRemoveChannel = () => {
   const { auth } = useStores();
   const notifySuccess = useNotifySuccess();
   return useMutation({
-    mutationFn: (id: string) => request<Pick<Channel, "id">>(auth, "DELETE", `/channels/${id}`),
+    mutationFn: (id: string) => request<Pick<Channel, "id">>(auth, "DELETE", apiRoutes.channel(id)),
     onSuccess: (channel) => {
       removeChannel(queryClient, channel);
       notifySuccess(i18n.t("channels.toasts.removed"));
@@ -201,7 +202,7 @@ export const useSendMessage = () => {
   const { auth } = useStores();
   return useMutation({
     mutationFn: (message: Omit<Message, "id">) =>
-      request<Message>(auth, "POST", "/messages", message),
+      request<Message>(auth, "POST", apiRoutes.messages(), message),
     onSuccess: (message) => addMessage(queryClient, message),
   });
 };

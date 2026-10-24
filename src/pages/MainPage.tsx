@@ -65,7 +65,7 @@ export const MainPage = () => {
             </Box>
             <ScrollArea flex={1} p="md" viewportRef={feed}>
               {channelMessages.map(({ id, username, body }) => (
-                <Text key={id} mb="xs" style={{ overflowWrap: "anywhere" }}>
+                <Text key={id} mb="xs">
                   <b>{username}</b>: {body}
                 </Text>
               ))}
