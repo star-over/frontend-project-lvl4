@@ -38,6 +38,7 @@
   - Приложение поднимается только через `renderApp({ path, user, fetch })` из `__tests__/helpers.ts` — тем же путём, что в продакшене: `init(fakeSocket())`. `App` без `init` не рендерится (проп `queryClient` обязателен).
   - `fetch` по умолчанию — `createServer()`: сервер в памяти с состоянием, отвечает как `@hexlet/chat-server` (каналы, сообщения, вход `admin`/`admin`, регистрация, `offline`). Нестандартный ответ — свой `vi.fn<typeof fetch>`.
   - `emit(event, payload)` из `renderApp` — событие сокета или менеджера (`reconnect`).
+  - Правила вне React (функции кеша в `src/api.ts`, `src/channelName.ts`) — property-based тесты на fast-check (`test.prop` из `@fast-check/vitest`): свойства вместо примеров — повтор события не меняет кеш, id не повторяются, после удаления канала нет его сообщений, границы длины имени. Интерфейс и склонения проверяются примерами.
   - Исключение — `__tests__/smoke.test.tsx`: повторяет контракт проверки Хекслета (импорт `src/init.jsx`, свой сокет).
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 

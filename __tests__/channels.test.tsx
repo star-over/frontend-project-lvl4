@@ -1,9 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { QueryClient } from "@tanstack/react-query";
-
-import { removeChannel } from "../src/api.ts";
 import { createServer, renderApp } from "./helpers.ts";
 
 // Кроме двух каналов по умолчанию — созданный «custom» со своим сообщением.
@@ -115,23 +112,6 @@ test("удаление с подтверждением уводит в кана�
   expect(screen.queryByRole("button", { name: "# custom" })).toBeNull();
   expect(screen.queryByText(/В своём/)).toBeNull();
   expect(await screen.findByText("Канал удалён")).toBeTruthy();
-});
-
-test("removeChannel убирает из кеша канал и все его сообщения", () => {
-  const queryClient = new QueryClient();
-  queryClient.setQueryData(["channels"], [{ id: "1" }, { id: "3" }]);
-  queryClient.setQueryData(
-    ["messages"],
-    [
-      { id: "1", channelId: "1" },
-      { id: "2", channelId: "3" },
-    ],
-  );
-
-  removeChannel(queryClient, { id: "3" });
-
-  expect(queryClient.getQueryData(["channels"])).toEqual([{ id: "1" }]);
-  expect(queryClient.getQueryData(["messages"])).toEqual([{ id: "1", channelId: "1" }]);
 });
 
 test("переименование: поле заполнено текущим именем, имя обновляется в списке", async () => {
