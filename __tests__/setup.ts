@@ -2,6 +2,7 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
+import { useUi } from "../src/stores/ui.ts";
 
 // jsdom не реализует matchMedia, а Mantine читает через него цветовую схему.
 window.matchMedia = (query) =>
@@ -12,10 +13,18 @@ window.matchMedia = (query) =>
     removeEventListener: () => {},
   }) as unknown as MediaQueryList;
 
+// ScrollArea из Mantine следит за размерами через ResizeObserver, которого в jsdom нет.
+window.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   useAuth.setState({ user: null });
+  useUi.setState({ currentChannelId: null });
   localStorage.clear();
   window.history.pushState({}, "", "/");
 });

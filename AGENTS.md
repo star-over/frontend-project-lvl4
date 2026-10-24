@@ -34,7 +34,7 @@
 - Контракт проверки Хекслета требует `src/init.jsx`: он остаётся реэкспортом из `src/init.tsx`. Тест `__tests__/smoke.test.tsx` импортирует именно `src/init.jsx`.
 - Линт и формат — oxlint + oxfmt с конфигами из эталонной заготовки (канон Хекслета). `make lint` = typecheck + oxlint + oxfmt.
 - Версии зависимостей — последние на момент установки.
-- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушка `matchMedia` для Mantine). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
+- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, сброс сторов, `fetch` — через `vi.stubGlobal`). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 
 ## Шаги
@@ -58,3 +58,10 @@
   - После входа — редирект на `/`. Ошибка 401 показывается в форме: «Неверные имя пользователя или пароль».
   - Без токена `/` редиректит на `/login`; с токеном `/login` редиректит на `/`. Кнопка «Выйти» в шапке очищает хранилище.
   - Тестовый пользователь сервера: `admin` / `admin`.
+- **Инициализация (step=5).**
+  - На открытии чата грузятся `GET /api/v1/channels` и `GET /api/v1/messages`, токен — в заголовке `Authorization: Bearer <token>`.
+  - Запросы и хуки данных — `src/api.ts` (`useChannels`, `useMessages` на TanStack Query). Ответ 401 разлогинивает.
+  - UI-состояние (текущий канал) — `src/stores/ui.ts` (Zustand); пока канал не выбран, показывается первый.
+  - Один `QueryClient` в `App`, кеш чистится при выходе.
+  - Разметка как в демо: слева каналы, справа заголовок канала со счётчиком сообщений, лента и поле ввода.
+- Сервер стартует с пустой лентой сообщений; seed-каналы — `general` и `random`.
