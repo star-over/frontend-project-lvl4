@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
@@ -29,6 +30,17 @@ test("пустая форма: все поля обязательны, запр�
 
   expect(await screen.findAllByText("Обязательное поле")).toHaveLength(3);
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("ошибка поля видна сразу после ухода с него, без отправки", async () => {
+  const user = userEvent.setup();
+  await renderApp({ path: "/signup" });
+
+  await user.type(screen.getByLabelText("Имя пользователя"), "ab");
+  await user.tab();
+
+  expect(await screen.findByText("От 3 до 20 символов")).toBeTruthy();
+  expect(screen.queryByText("Обязательное поле")).toBeNull();
 });
 
 test("имя 3–20 символов, пароль от 6, подтверждение совпадает", async () => {
