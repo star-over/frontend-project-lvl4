@@ -1,5 +1,5 @@
 import { Button, Group, Modal, Text, TextInput } from "@mantine/core";
-import { hasLength, useForm } from "@mantine/form";
+import { useForm } from "@mantine/form";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -9,7 +9,7 @@ import {
   useRemoveChannel,
   useRenameChannel,
 } from "../api.ts";
-import { censor } from "../profanity.ts";
+import { channelNameError, normalizeChannelName } from "../channelName.ts";
 import { useUi } from "../stores/ui.ts";
 
 // Форма имени канала общая для добавления и переименования: Enter отправляет её,
@@ -24,10 +24,12 @@ const ChannelNameForm = (props: {
   const form = useForm({
     initialValues: { name: props.initialName },
     validate: {
-      name: (value) =>
-        hasLength({ min: 3, max: 20 }, t("errors.length"))(value.trim()) ??
-        // Уникальность — по имени после фильтра: оно и уйдёт на сервер.
-        (names.includes(censor(value.trim())) ? t("channels.unique") : null),
+      name: (value) => {
+        const error = channelNameError(value, names);
+        if (error === "length") return t("errors.length");
+        if (error === "unique") return t("channels.unique");
+        return null;
+      },
     },
   });
 
@@ -36,8 +38,7 @@ const ChannelNameForm = (props: {
   // Ошибку и успех показывает слой запросов (src/api.ts); при ошибке модалка остаётся открытой.
   const onSubmit = form.onSubmit(async ({ name }) => {
     try {
-      // Фильтр мата — и при создании, и при переименовании канала.
-      await props.onSubmit(censor(name.trim()));
+      await props.onSubmit(normalizeChannelName(name));
       closeModal();
     } catch {
       // уведомление об ошибке уже показано

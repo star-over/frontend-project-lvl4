@@ -78,7 +78,7 @@
   - Сокет-события сервера: `newMessage`, `newChannel`, `renameChannel`, `removeChannel` (+ `renameMessage`, `removeMessage`).
 - **Работа с каналами (step=7).**
   - Добавление, переименование, удаление — мутации `useAddChannel`/`useRenameChannel`/`useRemoveChannel` (`POST`/`PATCH`/`DELETE /api/v1/channels[/:id]`). Кеш правят функции `addChannel`/`renameChannel`/`removeChannel` — их же зовут обработчики сокета `newChannel`/`renameChannel`/`removeChannel` в `init.tsx`.
-  - Имя канала: `useForm` + встроенный `hasLength({ min: 3, max: 20 })` («От 3 до 20 символов») и уникальность («Должно быть уникальным»), пробелы по краям обрезаются.
+  - Имя канала — правило в `src/channelName.ts`, вне React: `normalizeChannelName` (обрезка пробелов + фильтр мата) и `channelNameError(name, existing)` → `"length"` (вне 3–20, «От 3 до 20 символов») / `"unique"` («Должно быть уникальным») / `null`. Форма в `ChannelModals` только переводит код ошибки в текст.
   - Создатель канала переходит в него (`AddChannel` в `ChannelModals.tsx`). Удаление уносит сообщения канала; кто был в нём — попадает в канал по умолчанию через правило `useCurrentChannel`.
   - Меню «Удалить» / «Переименовать» (кнопка `aria-label="Управление каналом"`) — только у `removable` каналов. Удаление — с подтверждением «Уверены?».
   - Модалки — одна `Modal` в `ChannelModals.tsx`, какая открыта — в Zustand (`modal` в `src/stores/ui.ts`). Формы — обычный `<form>`, Enter отправляет. Поле имени в фокусе (`data-autofocus`), при переименовании старое имя выделено.
@@ -102,8 +102,8 @@
   - Нет сети: `disconnect` сокета (кроме `io client disconnect`) — постоянное уведомление «Нет соединения с сервером» (`id: "offline"`), `connect` его убирает.
   - Неудачная мутация (отправка сообщения, каналы) — «Ошибка соединения» из общего `MutationCache.onError` в `createQueryClient`. Успех каналов — «Канал создан» / «Канал переименован» / «Канал удалён» в `onSuccess` самих мутаций в `src/api.ts`. Компоненты уведомления не показывают: только закрывают модалку / чистят поле / ставят ошибку поля, исключение `mutateAsync` гасят в `catch`.
 - **Фильтрация нецензурных слов (step=11).**
-  - `leo-profanity` через `censor()` из `src/profanity.ts`: встроенный английский словарь + русский (`add(getDictionary("ru"))`, не `loadDictionary` — тот заменяет словарь). Слово заменяется звёздочками той же длины.
-  - Фильтруется до отправки на сервер: текст сообщения (`MessageForm`) и имя канала при создании и переименовании (`ChannelModals`). Уникальность имени канала проверяется по уже отфильтрованному имени.
+  - `leo-profanity` через `censor()` из `src/profanity.ts`: встроенный английский словарь + русский (`add(getDictionary("ru"))`, не `loadDictionary` — тот заменяет словарь). Слово заменяется звёздочками той же длины. Слова выделяет сам `censor` (буквы и цифры, внутри `-`/`&`) и проверяет `filter.check`: `filter.clean` делит только по пробелам, запятым и точкам и пропускает «boobs!», «(boobs)».
+  - Фильтруется до отправки на сервер: текст сообщения (`MessageForm`) и имя канала при создании и переименовании (`normalizeChannelName`). Уникальность имени канала проверяется по уже отфильтрованному имени.
 - **Эксплуатация (step=12).**
   - Коллектор ошибок — Bugsink через `@sentry/react` (Bugsink принимает события Sentry SDK; трейсинг не включать).
   - `Sentry.init` — в `src/index.tsx`, не в `init`: проверки Хекслета зовут `init` напрямую. Ошибки рендера React — через `reactErrorHandler()` в опциях `createRoot`.
