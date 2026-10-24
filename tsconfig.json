@@ -9,10 +9,11 @@
     "strict": true,
     "noEmit": true,
     "allowJs": true,
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true
   },
-  "include": ["src", "__tests__", "vite.config.ts"]
+  "include": ["src", "__tests__", "vite.config.ts", "i18next.config.ts"]
 }

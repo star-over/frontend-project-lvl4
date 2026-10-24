@@ -11,6 +11,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useChannels, useMessages } from "../api.ts";
 import { ChannelList } from "../components/ChannelList.tsx";
@@ -18,12 +19,8 @@ import { ChannelModals } from "../components/ChannelModals.tsx";
 import { MessageForm } from "../components/MessageForm.tsx";
 import { useUi } from "../stores/ui.ts";
 
-const plural = new Intl.PluralRules("ru");
-const messageWords = { one: "сообщение", few: "сообщения", many: "сообщений", other: "сообщений" };
-const countMessages = (n: number) =>
-  `${n} ${messageWords[plural.select(n) as keyof typeof messageWords]}`;
-
 export const MainPage = () => {
+  const { t } = useTranslation();
   const channels = useChannels();
   const messages = useMessages();
   const currentChannelId = useUi((state) => state.currentChannelId);
@@ -44,7 +41,7 @@ export const MainPage = () => {
   if (channels.isError || messages.isError) {
     return (
       <Container py="xl">
-        <Alert color="red">Ошибка загрузки данных</Alert>
+        <Alert color="red">{t("errors.loading")}</Alert>
       </Container>
     );
   }
@@ -64,7 +61,7 @@ export const MainPage = () => {
                 # {current?.name}
               </Title>
               <Text c="dimmed" size="sm">
-                {countMessages(channelMessages.length)}
+                {t("messages.count", { count: channelMessages.length })}
               </Text>
             </Box>
             <ScrollArea flex={1} p="md" viewportRef={feed}>

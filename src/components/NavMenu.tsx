@@ -1,9 +1,11 @@
 import { Anchor, Button, Container, Group, Paper } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { useAuth } from "../stores/auth.ts";
 
 export const NavMenu = () => {
+  const { t } = useTranslation();
   const user = useAuth((state) => state.user);
   const logOut = useAuth((state) => state.logOut);
 
@@ -12,11 +14,11 @@ export const NavMenu = () => {
       <Container>
         <Group justify="space-between" h={60}>
           <Anchor component={Link} to="/" fw={700} c="dark" underline="never">
-            Hexlet Chat
+            {t("appName")}
           </Anchor>
           {user && (
             <Button variant="outline" onClick={logOut}>
-              Выйти
+              {t("buttons.logout")}
             </Button>
           )}
         </Group>

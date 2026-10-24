@@ -2,8 +2,10 @@ import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { I18nextProvider } from "react-i18next";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
+import { i18n } from "../i18n.ts";
 import { LoginPage } from "../pages/LoginPage.tsx";
 import { MainPage } from "../pages/MainPage.tsx";
 import { NotFoundPage } from "../pages/NotFoundPage.tsx";
@@ -26,19 +28,21 @@ export const App = (props: { queryClient?: QueryClient }) => {
   }, [user, queryClient]);
 
   return (
-    <MantineProvider>
-      <Notifications position="bottom-right" />
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <NavMenu />
-          <Routes>
-            <Route path="/" element={user ? <MainPage /> : <Navigate to="/login" replace />} />
-            <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-            <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignupPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </MantineProvider>
+    <I18nextProvider i18n={i18n}>
+      <MantineProvider>
+        <Notifications position="bottom-right" />
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <NavMenu />
+            <Routes>
+              <Route path="/" element={user ? <MainPage /> : <Navigate to="/login" replace />} />
+              <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+              <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignupPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </MantineProvider>
+    </I18nextProvider>
   );
 };

@@ -1,16 +1,21 @@
 import { Anchor, Stack, Text, Title } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
-export const NotFoundPage = () => (
-  <Stack align="center" py="xl">
-    <Title order={2} c="dimmed">
-      Страница не найдена
-    </Title>
-    <Text c="dimmed">
-      Но вы можете перейти{" "}
-      <Anchor component={Link} to="/">
-        на главную страницу
-      </Anchor>
-    </Text>
-  </Stack>
-);
+export const NotFoundPage = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack align="center" py="xl">
+      <Title order={2} c="dimmed">
+        {t("notFound.title")}
+      </Title>
+      <Text c="dimmed">
+        {t("notFound.hint")}{" "}
+        <Anchor component={Link} to="/">
+          {t("notFound.homeLink")}
+        </Anchor>
+      </Text>
+    </Stack>
+  );
+};

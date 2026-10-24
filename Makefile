@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 help: ## Список целей
-	@awk -F ':.*## ' '/^[a-z-]+:.*## / { printf "  %-16s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk -F ':.*## ' '/^[a-z0-9-]+:.*## / { printf "  %-16s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 install: ## Установить зависимости из lock-файла
 	npm ci
@@ -19,8 +19,15 @@ start-frontend: ## Запустить dev-сервер Vite (порт 5002)
 develop: ## Запустить сервер и dev-сервер вместе
 	make start & make start-frontend
 
-test: ## Прогнать тесты
+test: i18n-check ## Прогнать тесты (вместе с проверкой переводов)
 	npx vitest run
+
+i18n-check: ## Переводы: нет захардкоженных строк, все ключи из кода есть в словаре
+	npx i18next-cli lint
+	npx i18next-cli status
+
+i18n-extract: ## Добавить в словарь ключи из вызовов t()
+	npx i18next-cli extract
 
 lint: ## Проверить типы, линт и формат
 	npx tsc --noEmit
@@ -31,4 +38,4 @@ lint-fix: ## Исправить формат и автоисправимые о�
 	npx oxfmt .
 	npx oxlint --fix .
 
-.PHONY: help install build start start-frontend develop test lint lint-fix
+.PHONY: help install build start start-frontend develop test i18n-check i18n-extract lint lint-fix

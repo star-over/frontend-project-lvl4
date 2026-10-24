@@ -1,4 +1,5 @@
 import { ActionIcon, Group, Menu, NavLink, ScrollArea, Stack, Text, Title } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 
 import type { Channel } from "../api.ts";
 import { useUi } from "../stores/ui.ts";
@@ -6,13 +7,14 @@ import { useUi } from "../stores/ui.ts";
 type Props = { channels: Channel[]; currentId: string | undefined };
 
 export const ChannelList = ({ channels, currentId }: Props) => {
+  const { t } = useTranslation();
   const setCurrentChannel = useUi((state) => state.setCurrentChannel);
   const openModal = useUi((state) => state.openModal);
 
   return (
     <Stack w={250} p="md" gap="xs" bg="gray.0">
       <Group justify="space-between" wrap="nowrap">
-        <Title order={4}>Каналы</Title>
+        <Title order={4}>{t("channels.title")}</Title>
         <ActionIcon variant="outline" size="sm" onClick={() => openModal({ type: "add" })}>
           +
         </ActionIcon>
@@ -33,16 +35,16 @@ export const ChannelList = ({ channels, currentId }: Props) => {
             {channel.removable && (
               <Menu position="bottom-end">
                 <Menu.Target>
-                  <ActionIcon variant="subtle" color="gray" aria-label="Управление каналом">
+                  <ActionIcon variant="subtle" color="gray" aria-label={t("channels.manage")}>
                     ▾
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item onClick={() => openModal({ type: "remove", channel })}>
-                    Удалить
+                    {t("channels.remove")}
                   </Menu.Item>
                   <Menu.Item onClick={() => openModal({ type: "rename", channel })}>
-                    Переименовать
+                    {t("channels.rename")}
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>

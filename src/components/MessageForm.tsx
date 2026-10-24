@@ -2,11 +2,13 @@ import { Button, Group, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useSendMessage } from "../api.ts";
 import { useAuth } from "../stores/auth.ts";
 
 export const MessageForm = ({ channelId }: { channelId: string }) => {
+  const { t } = useTranslation();
   const username = useAuth((state) => state.user?.username ?? "");
   const sendMessage = useSendMessage();
   const input = useRef<HTMLInputElement>(null);
@@ -22,7 +24,7 @@ export const MessageForm = ({ channelId }: { channelId: string }) => {
       await sendMessage.mutateAsync({ body: body.trim(), channelId, username });
       form.reset();
     } catch {
-      notifications.show({ color: "red", message: "Ошибка соединения" });
+      notifications.show({ color: "red", message: t("errors.network") });
     }
     form.getInputNode("body")?.focus();
   });
@@ -33,8 +35,8 @@ export const MessageForm = ({ channelId }: { channelId: string }) => {
         <TextInput
           ref={input}
           flex={1}
-          aria-label="Новое сообщение"
-          placeholder="Введите сообщение..."
+          aria-label={t("messages.input")}
+          placeholder={t("messages.placeholder")}
           {...form.getInputProps("body")}
         />
         <Button
@@ -43,7 +45,7 @@ export const MessageForm = ({ channelId }: { channelId: string }) => {
           loading={form.submitting}
           disabled={!form.values.body.trim()}
         >
-          Отправить
+          {t("buttons.send")}
         </Button>
       </Group>
     </form>

@@ -1,6 +1,7 @@
 import { Button, Group, Modal, Text, TextInput } from "@mantine/core";
 import { hasLength, useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 
 import {
   type Channel,
@@ -11,22 +12,21 @@ import {
 } from "../api.ts";
 import { useUi } from "../stores/ui.ts";
 
-const networkError = () => notifications.show({ color: "red", message: "Ошибка соединения" });
-
 // Форма имени канала общая для добавления и переименования: Enter отправляет её,
 // как и кнопка, потому что это обычный <form>.
 const ChannelNameForm = (props: {
   initialName: string;
   onSubmit: (name: string) => Promise<void>;
 }) => {
+  const { t } = useTranslation();
   const closeModal = useUi((state) => state.closeModal);
   const names = (useChannels().data ?? []).map(({ name }) => name);
   const form = useForm({
     initialValues: { name: props.initialName },
     validate: {
       name: (value) =>
-        hasLength({ min: 3, max: 20 }, "От 3 до 20 символов")(value.trim()) ??
-        (names.includes(value.trim()) ? "Должно быть уникальным" : null),
+        hasLength({ min: 3, max: 20 }, t("errors.length"))(value.trim()) ??
+        (names.includes(value.trim()) ? t("channels.unique") : null),
     },
   });
 
@@ -37,14 +37,14 @@ const ChannelNameForm = (props: {
       await props.onSubmit(name.trim());
       closeModal();
     } catch {
-      networkError();
+      notifications.show({ color: "red", message: t("errors.network") });
     }
   });
 
   return (
     <form onSubmit={onSubmit} noValidate>
       <TextInput
-        label="Имя канала"
+        label={t("channels.name")}
         data-autofocus
         {...inputProps}
         // При переименовании старое имя выделено — набор сразу его заменяет.
@@ -55,10 +55,10 @@ const ChannelNameForm = (props: {
       />
       <Group justify="flex-end" mt="md">
         <Button variant="default" onClick={closeModal}>
-          Отменить
+          {t("buttons.cancel")}
         </Button>
         <Button type="submit" loading={form.submitting}>
-          Отправить
+          {t("buttons.send")}
         </Button>
       </Group>
     </form>
@@ -66,32 +66,35 @@ const ChannelNameForm = (props: {
 };
 
 const AddChannel = () => {
+  const { t } = useTranslation();
   const addChannel = useAddChannel();
   return (
     <ChannelNameForm
       initialName=""
       onSubmit={async (name) => {
         await addChannel.mutateAsync(name);
-        notifications.show({ color: "green", message: "Канал создан" });
+        notifications.show({ color: "green", message: t("channels.toasts.added") });
       }}
     />
   );
 };
 
 const RenameChannel = ({ channel }: { channel: Channel }) => {
+  const { t } = useTranslation();
   const renameChannel = useRenameChannel();
   return (
     <ChannelNameForm
       initialName={channel.name}
       onSubmit={async (name) => {
         await renameChannel.mutateAsync({ id: channel.id, name });
-        notifications.show({ color: "green", message: "Канал переименован" });
+        notifications.show({ color: "green", message: t("channels.toasts.renamed") });
       }}
     />
   );
 };
 
 const RemoveChannel = ({ channel }: { channel: Channel }) => {
+  const { t } = useTranslation();
   const closeModal = useUi((state) => state.closeModal);
   const removeChannel = useRemoveChannel();
 
@@ -99,32 +102,37 @@ const RemoveChannel = ({ channel }: { channel: Channel }) => {
     try {
       await removeChannel.mutateAsync(channel.id);
       closeModal();
-      notifications.show({ color: "green", message: "Канал удалён" });
+      notifications.show({ color: "green", message: t("channels.toasts.removed") });
     } catch {
-      networkError();
+      notifications.show({ color: "red", message: t("errors.network") });
     }
   };
 
   return (
     <>
-      <Text>Уверены?</Text>
+      <Text>{t("channels.confirm")}</Text>
       <Group justify="flex-end" mt="md">
         <Button variant="default" onClick={closeModal}>
-          Отменить
+          {t("buttons.cancel")}
         </Button>
         <Button color="red" loading={removeChannel.isPending} onClick={onRemove}>
-          Удалить
+          {t("channels.remove")}
         </Button>
       </Group>
     </>
   );
 };
 
-const titles = { add: "Добавить канал", rename: "Переименовать канал", remove: "Удалить канал" };
-
 export const ChannelModals = () => {
+  const { t } = useTranslation();
   const modal = useUi((state) => state.modal);
   const closeModal = useUi((state) => state.closeModal);
+  // Ключи перечислены явно: i18next-cli видит только литеральные ключи, не шаблонные строки.
+  const titles = {
+    add: t("channels.modals.add"),
+    rename: t("channels.modals.rename"),
+    remove: t("channels.modals.remove"),
+  };
 
   return (
     <Modal
