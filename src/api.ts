@@ -26,6 +26,21 @@ const request = async <T>(method: string, path: string, body?: unknown): Promise
   return response.json();
 };
 
+// Вход и регистрация. Успех — пользователь сохраняется, возвращается undefined;
+// отказ сервера — его HTTP-статус (401, 409); сетевой сбой — исключение.
+export const authenticate = async (
+  path: "/login" | "/signup",
+  credentials: { username: string; password: string },
+): Promise<number | undefined> => {
+  const response = await fetch(`/api/v1${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+  });
+  if (!response.ok) return response.status;
+  useAuth.getState().logIn(await response.json());
+};
+
 export const useChannels = () =>
   useQuery({ queryKey: ["channels"], queryFn: () => request<Channel[]>("GET", "/channels") });
 

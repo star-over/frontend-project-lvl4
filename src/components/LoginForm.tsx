@@ -3,12 +3,11 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router";
 
-import { useAuth } from "../stores/auth.ts";
+import { authenticate } from "../api.ts";
 
 type Credentials = { username: string; password: string };
 
 export const LoginForm = () => {
-  const logIn = useAuth((state) => state.logIn);
   const navigate = useNavigate();
   const form = useForm<Credentials>({
     mode: "uncontrolled",
@@ -16,28 +15,22 @@ export const LoginForm = () => {
   });
 
   const onSubmit = form.onSubmit(async (values) => {
-    let response: Response;
+    let status: number | undefined;
     try {
-      response = await fetch("/api/v1/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
+      status = await authenticate("/login", values);
     } catch {
       notifications.show({ color: "red", message: "Ошибка соединения" });
       return;
     }
 
-    if (response.status === 401) {
+    if (status === 401) {
       form.setFieldError("password", "Неверные имя пользователя или пароль");
       return;
     }
-    if (!response.ok) {
+    if (status) {
       notifications.show({ color: "red", message: "Ошибка соединения" });
       return;
     }
-
-    logIn(await response.json());
     navigate("/");
   });
 

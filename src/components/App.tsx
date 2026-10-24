@@ -34,7 +34,7 @@ export const App = (props: { queryClient?: QueryClient }) => {
           <Routes>
             <Route path="/" element={user ? <MainPage /> : <Navigate to="/login" replace />} />
             <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignupPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>
