@@ -1,5 +1,13 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
+import {
+  QueryCache,
+  QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
+import { i18n } from "./i18n.ts";
 import { useAuth } from "./stores/auth.ts";
 import { useUi } from "./stores/ui.ts";
 
@@ -40,6 +48,23 @@ export const authenticate = async (
   if (!response.ok) return response.status;
   useAuth.getState().logIn(await response.json());
 };
+
+// Любая неудачная загрузка данных (сеть, сервер) — всплывающее уведомление.
+// id не даёт сложиться стопке одинаковых уведомлений, когда падают оба запроса.
+// Один повтор вместо трёх: ошибка видна через секунду, а не через семь;
+// после обрыва связи данные и так перечитываются по reconnect сокета.
+export const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: 1 } },
+    queryCache: new QueryCache({
+      onError: () =>
+        notifications.show({
+          id: "loading-error",
+          color: "red",
+          message: i18n.t("errors.loading"),
+        }),
+    }),
+  });
 
 export const useChannels = () =>
   useQuery({ queryKey: ["channels"], queryFn: () => request<Channel[]>("GET", "/channels") });
