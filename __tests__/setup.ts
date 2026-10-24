@@ -20,6 +20,9 @@ window.ResizeObserver = class {
   disconnect() {}
 };
 
+// Лента прокручивается к последнему сообщению, а jsdom не умеет scrollTo у элементов.
+Element.prototype.scrollTo = () => {};
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

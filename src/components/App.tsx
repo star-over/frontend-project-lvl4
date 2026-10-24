@@ -15,9 +15,11 @@ import { NavMenu } from "./NavMenu.tsx";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
-export const App = () => {
+// queryClient создаёт init, чтобы обработчики сокета писали в тот же кеш.
+// Без него (в тестах компонентов) App заводит свой.
+export const App = (props: { queryClient?: QueryClient }) => {
   const user = useAuth((state) => state.user);
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => props.queryClient ?? new QueryClient());
   // После выхода кеш чистится, чтобы следующий пользователь не увидел чужие данные.
   useEffect(() => {
     if (!user) queryClient.clear();

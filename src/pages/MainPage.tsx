@@ -4,18 +4,18 @@ import {
   Center,
   Container,
   Flex,
-  Group,
   Loader,
   NavLink,
   Paper,
   ScrollArea,
   Stack,
   Text,
-  TextInput,
   Title,
 } from "@mantine/core";
+import { useEffect, useRef } from "react";
 
 import { useChannels, useMessages } from "../api.ts";
+import { MessageForm } from "../components/MessageForm.tsx";
 import { useUi } from "../stores/ui.ts";
 
 const plural = new Intl.PluralRules("ru");
@@ -28,6 +28,12 @@ export const MainPage = () => {
   const messages = useMessages();
   const currentChannelId = useUi((state) => state.currentChannelId);
   const setCurrentChannel = useUi((state) => state.setCurrentChannel);
+  const feed = useRef<HTMLDivElement>(null);
+
+  // Новое сообщение или смена канала — лента прокручивается к последнему сообщению.
+  useEffect(() => {
+    feed.current?.scrollTo({ top: feed.current.scrollHeight });
+  }, [messages.data, currentChannelId]);
 
   if (channels.isPending || messages.isPending) {
     return (
@@ -72,17 +78,14 @@ export const MainPage = () => {
                 {countMessages(channelMessages.length)}
               </Text>
             </Box>
-            <ScrollArea flex={1} p="md">
+            <ScrollArea flex={1} p="md" viewportRef={feed}>
               {channelMessages.map(({ id, username, body }) => (
                 <Text key={id} mb="xs">
                   <b>{username}</b>: {body}
                 </Text>
               ))}
             </ScrollArea>
-            {/* ponytail: отправка сообщений — на шаге с веб-сокетами */}
-            <Group p="md">
-              <TextInput flex={1} aria-label="Новое сообщение" placeholder="Введите сообщение..." />
-            </Group>
+            {current && <MessageForm channelId={current.id} />}
           </Flex>
         </Flex>
       </Paper>

@@ -34,7 +34,7 @@
 - Контракт проверки Хекслета требует `src/init.jsx`: он остаётся реэкспортом из `src/init.tsx`. Тест `__tests__/smoke.test.tsx` импортирует именно `src/init.jsx`.
 - Линт и формат — oxlint + oxfmt с конфигами из эталонной заготовки (канон Хекслета). `make lint` = typecheck + oxlint + oxfmt.
 - Версии зависимостей — последние на момент установки.
-- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, сброс сторов, `fetch` — через `vi.stubGlobal`). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
+- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, `Element.scrollTo`, сброс сторов, `fetch` — через `vi.stubGlobal`). Сокет в тестах — заглушка с `on`/`emit`, приложение рендерится через `init` (см. `__tests__/messages.test.tsx`). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 
 ## Шаги
@@ -64,4 +64,11 @@
   - UI-состояние (текущий канал) — `src/stores/ui.ts` (Zustand); пока канал не выбран, показывается первый.
   - Один `QueryClient` в `App`, кеш чистится при выходе.
   - Разметка как в демо: слева каналы, справа заголовок канала со счётчиком сообщений, лента и поле ввода.
-- Сервер стартует с пустой лентой сообщений; seed-каналы — `general` и `random`.
+- **Работа с чатом (step=6).**
+  - Отправка — `POST /api/v1/messages` (`{ body, channelId, username }`) через `useSendMessage`; получение — событие сокета `newMessage`.
+  - Подписки на сокет живут в `init.tsx` вне React и пишут прямо в кеш TanStack Query; поэтому `QueryClient` создаёт `init` и передаёт в `App`.
+  - Сообщение приходит дважды (ответ POST и сокет) — `addMessage` отбрасывает дубль по `id`.
+  - Медленная или пропавшая сеть: пока запрос висит, кнопка заблокирована; при ошибке — уведомление «Ошибка соединения», текст остаётся в поле. После `reconnect` сокета все запросы перечитываются.
+  - Лента прокручивается к последнему сообщению; поле ввода в фокусе при смене канала и после отправки.
+  - Сокет-события сервера: `newMessage`, `newChannel`, `renameChannel`, `removeChannel` (+ `renameMessage`, `removeMessage`).
+- Сервер стартует с пустой лентой сообщений; seed-каналы — `general` и `random`. Данные в памяти — перезапуск всё сбрасывает.
