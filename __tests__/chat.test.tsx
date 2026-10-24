@@ -1,31 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 
-import { App } from "../src/components/App.tsx";
-import { useAuth } from "../src/stores/auth.ts";
+import { createServer, renderApp } from "./helpers.ts";
 
-const data: Record<string, unknown> = {
-  "/api/v1/channels": [
-    { id: "1", name: "general", removable: false },
-    { id: "2", name: "random", removable: false },
-  ],
-  "/api/v1/messages": [
-    { id: "1", body: "Привет!", channelId: "1", username: "admin" },
-    { id: "2", body: "Как дела?", channelId: "1", username: "user" },
-  ],
-};
-
-const openChat = () => {
-  const fetchMock = vi.fn<typeof fetch>(async (url) => Response.json(data[String(url)]));
-  vi.stubGlobal("fetch", fetchMock);
-  useAuth.setState({ user: { token: "jwt", username: "admin" } });
-  window.history.pushState({}, "", "/");
-  render(<App />);
-  return fetchMock;
-};
+const openChat = () =>
+  renderApp({
+    user: "admin",
+    fetch: createServer({
+      messages: [
+        { id: "1", body: "Привет!", channelId: "1", username: "admin" },
+        { id: "2", body: "Как дела?", channelId: "1", username: "user" },
+      ],
+    }),
+  });
 
 test("чат загружает каналы и сообщения с токеном в Authorization", async () => {
-  const fetchMock = openChat();
+  const { fetchMock } = await openChat();
 
   expect(await screen.findByRole("button", { name: "# random" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "# general" })).toBeTruthy();
@@ -39,7 +29,7 @@ test("чат загружает каналы и сообщения с токен
 });
 
 test("выбор канала показывает его сообщения", async () => {
-  openChat();
+  await openChat();
 
   fireEvent.click(await screen.findByRole("button", { name: "# random" }));
 
@@ -49,14 +39,21 @@ test("выбор канала показывает его сообщения", a
 });
 
 test("ответ 401 разлогинивает и ведёт на /login", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn<typeof fetch>(async () => new Response(null, { status: 401 })),
-  );
-  useAuth.setState({ user: { token: "expired", username: "admin" } });
-  window.history.pushState({}, "", "/");
-  render(<App />);
+  await renderApp({
+    user: "admin",
+    fetch: vi.fn<typeof fetch>(async () => new Response(null, { status: 401 })),
+  });
 
   expect(await screen.findByRole("heading", { name: "Войти" })).toBeTruthy();
   expect(window.location.pathname).toBe("/login");
+});
+
+test("после переподключения сокета данные перечитываются с сервера", async () => {
+  const { fetchMock, emit } = await openChat();
+  await screen.findByRole("heading", { name: "# general" });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+
+  await emit("reconnect");
+
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
 });

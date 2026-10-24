@@ -1,22 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import type { Socket } from "socket.io-client";
+import { screen, waitFor } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 
-import init from "../src/init.tsx";
-import { useAuth } from "../src/stores/auth.ts";
-import { fakeSocket } from "./helpers.ts";
-
-const openChat = async (fetchMock: typeof fetch) => {
-  vi.stubGlobal("fetch", fetchMock);
-  useAuth.setState({ user: { token: "jwt", username: "admin" } });
-  window.history.pushState({}, "", "/");
-  const socket = fakeSocket();
-  render(await init(socket as unknown as Socket));
-  return socket;
-};
+import { renderApp } from "./helpers.ts";
 
 test("ошибка загрузки данных показывает уведомление", async () => {
-  await openChat(async () => new Response(null, { status: 500 }));
+  await renderApp({
+    user: "admin",
+    fetch: vi.fn<typeof fetch>(async () => new Response(null, { status: 500 })),
+  });
 
   // Текст дважды: плашка на странице и всплывающее уведомление.
   await waitFor(() => expect(screen.getAllByText("Ошибка загрузки данных")).toHaveLength(2), {
@@ -25,22 +16,20 @@ test("ошибка загрузки данных показывает уведо
 });
 
 test("обрыв сокета показывает уведомление, переподключение его убирает", async () => {
-  const socket = await openChat(async (url) =>
-    Response.json(String(url).endsWith("/channels") ? [{ id: "1", name: "general" }] : []),
-  );
+  const { emit } = await renderApp({ user: "admin" });
   await screen.findByRole("heading", { name: "# general" });
 
-  await socket.emit("disconnect", "transport close");
+  await emit("disconnect", "transport close");
   expect(screen.getByText("Нет соединения с сервером")).toBeTruthy();
 
-  await socket.emit("connect", undefined);
+  await emit("connect");
   await waitFor(() => expect(screen.queryByText("Нет соединения с сервером")).toBeNull());
 });
 
 test("закрытие сокета самим клиентом — не обрыв сети", async () => {
-  const socket = await openChat(async () => Response.json([]));
+  const { emit } = await renderApp({ user: "admin" });
 
-  await socket.emit("disconnect", "io client disconnect");
+  await emit("disconnect", "io client disconnect");
 
   expect(screen.queryByText("Нет соединения с сервером")).toBeNull();
 });

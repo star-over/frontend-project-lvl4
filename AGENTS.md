@@ -34,7 +34,11 @@
 - Контракт проверки Хекслета требует `src/init.jsx`: он остаётся реэкспортом из `src/init.tsx`. Тест `__tests__/smoke.test.tsx` импортирует именно `src/init.jsx`.
 - Линт и формат — oxlint + oxfmt с конфигами из эталонной заготовки (канон Хекслета). `make lint` = typecheck + oxlint + oxfmt.
 - Версии зависимостей — последние на момент установки.
-- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, `Element.scrollTo`, сброс сторов, `fetch` — через `vi.stubGlobal`). Сокет в тестах — заглушка с `on`/`emit`, приложение рендерится через `init` (см. `__tests__/messages.test.tsx`). Компонент вне `App` рендерить внутри `MantineProvider`. Роутинг проверяется через `window.history.pushState` перед `render(<App />)`.
+- Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, `Element.scrollTo`, сброс сторов).
+  - Приложение поднимается только через `renderApp({ path, user, fetch })` из `__tests__/helpers.ts` — тем же путём, что в продакшене: `init(fakeSocket())`. `App` без `init` не рендерится (проп `queryClient` обязателен).
+  - `fetch` по умолчанию — `createServer()`: сервер в памяти, отвечает как `@hexlet/chat-server` (каналы, сообщения, вход `admin`/`admin`, регистрация, `offline`). Нестандартный ответ — свой `vi.fn<typeof fetch>`.
+  - `emit(event, payload)` из `renderApp` — событие сокета или менеджера (`reconnect`).
+  - Исключение — `__tests__/smoke.test.tsx`: повторяет контракт проверки Хекслета (импорт `src/init.jsx`, свой сокет).
 - `package.json` минимальный: только `name`, `private`, `type` и зависимости, без `scripts`. Все команды — в `Makefile` через `npx`.
 
 ## Шаги

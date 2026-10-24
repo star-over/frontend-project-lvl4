@@ -1,24 +1,19 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { expect, test, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { expect, test } from "vitest";
 
-import { App } from "../src/components/App.tsx";
 import { useAuth } from "../src/stores/auth.ts";
+import { renderApp } from "./helpers.ts";
 
-const logInAs = (username: string, password: string) => {
-  window.history.pushState({}, "", "/login");
-  render(<App />);
+const logInAs = async (username: string, password: string) => {
+  const app = await renderApp({ path: "/login" });
   fireEvent.change(screen.getByLabelText("Ваш ник"), { target: { value: username } });
   fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: password } });
   fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+  return app;
 };
 
 test("успешный вход сохраняет токен в localStorage и ведёт на главную", async () => {
-  const fetchMock = vi.fn<typeof fetch>(async () =>
-    Response.json({ token: "jwt", username: "admin" }),
-  );
-  vi.stubGlobal("fetch", fetchMock);
-
-  logInAs("admin", "admin");
+  const { fetchMock } = await logInAs("admin", "admin");
 
   await waitFor(() => expect(window.location.pathname).toBe("/"));
   expect(fetchMock).toHaveBeenCalledWith(
@@ -33,12 +28,7 @@ test("успешный вход сохраняет токен в localStorage и
 });
 
 test("неверный пароль показывает ошибку в форме", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn<typeof fetch>(async () => new Response(null, { status: 401 })),
-  );
-
-  logInAs("admin", "wrong");
+  await logInAs("admin", "wrong");
 
   expect(await screen.findByText("Неверные имя пользователя или пароль")).toBeTruthy();
   expect(window.location.pathname).toBe("/login");

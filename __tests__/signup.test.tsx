@@ -1,18 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { expect, test, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { expect, test } from "vitest";
 
-import { App } from "../src/components/App.tsx";
 import { useAuth } from "../src/stores/auth.ts";
-
-const openSignup = (signup: () => Promise<Response>) => {
-  const fetchMock = vi.fn<typeof fetch>(async (url) =>
-    String(url).endsWith("/signup") ? signup() : Response.json([]),
-  );
-  vi.stubGlobal("fetch", fetchMock);
-  window.history.pushState({}, "", "/signup");
-  render(<App />);
-  return fetchMock;
-};
+import { renderApp } from "./helpers.ts";
 
 const fill = (username: string, password: string, confirmPassword: string) => {
   fireEvent.change(screen.getByLabelText("Имя пользователя"), { target: { value: username } });
@@ -23,9 +13,8 @@ const fill = (username: string, password: string, confirmPassword: string) => {
   fireEvent.click(screen.getByRole("button", { name: "Зарегистрироваться" }));
 };
 
-test("со страницы входа есть ссылка на регистрацию", () => {
-  window.history.pushState({}, "", "/login");
-  render(<App />);
+test("со страницы входа есть ссылка на регистрацию", async () => {
+  await renderApp({ path: "/login" });
 
   fireEvent.click(screen.getByRole("link", { name: "Регистрация" }));
 
@@ -34,7 +23,7 @@ test("со страницы входа есть ссылка на регистр
 });
 
 test("пустая форма: все поля обязательны, запроса нет", async () => {
-  const fetchMock = openSignup(async () => Response.json({}));
+  const { fetchMock } = await renderApp({ path: "/signup" });
 
   fill("", "", "");
 
@@ -43,7 +32,7 @@ test("пустая форма: все поля обязательны, запр�
 });
 
 test("имя 3–20 символов, пароль от 6, подтверждение совпадает", async () => {
-  const fetchMock = openSignup(async () => Response.json({}));
+  const { fetchMock } = await renderApp({ path: "/signup" });
 
   fill("ab", "12345", "54321");
 
@@ -57,9 +46,7 @@ test("имя 3–20 символов, пароль от 6, подтвержде�
 });
 
 test("успешная регистрация логинит и ведёт в чат", async () => {
-  const fetchMock = openSignup(async () =>
-    Response.json({ token: "jwt", username: "newuser" }, { status: 201 }),
-  );
+  const { fetchMock } = await renderApp({ path: "/signup" });
 
   fill("newuser", "123456", "123456");
 
@@ -70,7 +57,7 @@ test("успешная регистрация логинит и ведёт в ч
 });
 
 test("ответ 409 показывает, что пользователь уже существует", async () => {
-  openSignup(async () => new Response(null, { status: 409 }));
+  await renderApp({ path: "/signup" });
 
   fill("admin", "123456", "123456");
 
@@ -79,14 +66,8 @@ test("ответ 409 показывает, что пользователь уж�
   expect(useAuth.getState().user).toBeNull();
 });
 
-test("вошедшего пользователя /signup отправляет в чат", () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn<typeof fetch>(async () => Response.json([])),
-  );
-  useAuth.setState({ user: { token: "jwt", username: "admin" } });
-  window.history.pushState({}, "", "/signup");
-  render(<App />);
+test("вошедшего пользователя /signup отправляет в чат", async () => {
+  await renderApp({ path: "/signup", user: "admin" });
 
   expect(window.location.pathname).toBe("/");
 });

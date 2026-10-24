@@ -1,56 +1,30 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { Socket } from "socket.io-client";
-import { expect, test, vi } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { expect, test } from "vitest";
 
 import { QueryClient } from "@tanstack/react-query";
 
-import { type Channel, type Message, removeChannel } from "../src/api.ts";
-import init from "../src/init.tsx";
-import { useAuth } from "../src/stores/auth.ts";
-import { fakeSocket } from "./helpers.ts";
+import { removeChannel } from "../src/api.ts";
+import { createServer, renderApp } from "./helpers.ts";
 
-// Сервер в памяти: отвечает на запросы каналов так же, как @hexlet/chat-server.
-// offline: изменяющие запросы падают, как при пропавшей сети.
+// Кроме двух каналов по умолчанию — созданный «custom» со своим сообщением.
 const openChat = async ({ offline = false } = {}) => {
-  let channels: Channel[] = [
-    { id: "1", name: "general", removable: false },
-    { id: "2", name: "random", removable: false },
-    { id: "3", name: "custom", removable: true },
-  ];
-  const messages: Message[] = [
-    { id: "1", body: "В общем", channelId: "1", username: "admin" },
-    { id: "2", body: "В своём", channelId: "3", username: "admin" },
-  ];
-  const fetchMock = vi.fn<typeof fetch>(async (url, options) => {
-    const path = String(url).replace("/api/v1", "");
-    const body = options?.body ? JSON.parse(String(options.body)) : {};
-    const id = path.split("/")[2];
-    if (offline && options?.method !== "GET") throw new TypeError("Failed to fetch");
-    switch (`${options?.method ?? "GET"} ${path.replace(/\/\d+$/, "/:id")}`) {
-      case "GET /channels":
-        return Response.json(channels);
-      case "GET /messages":
-        return Response.json(messages);
-      case "POST /channels": {
-        const channel = { id: "99", name: body.name, removable: true };
-        channels = [...channels, channel];
-        return Response.json(channel);
-      }
-      case "PATCH /channels/:id":
-        return Response.json({ ...channels.find((c) => c.id === id), name: body.name });
-      case "DELETE /channels/:id":
-        return Response.json({ id });
-      default:
-        return new Response(null, { status: 404 });
-    }
+  const app = await renderApp({
+    user: "admin",
+    fetch: createServer({
+      offline,
+      channels: [
+        { id: "1", name: "general", removable: false },
+        { id: "2", name: "random", removable: false },
+        { id: "3", name: "custom", removable: true },
+      ],
+      messages: [
+        { id: "1", body: "В общем", channelId: "1", username: "admin" },
+        { id: "2", body: "В своём", channelId: "3", username: "admin" },
+      ],
+    }),
   });
-  vi.stubGlobal("fetch", fetchMock);
-  useAuth.setState({ user: { token: "jwt", username: "admin" } });
-  window.history.pushState({}, "", "/");
-  const socket = fakeSocket();
-  render(await init(socket as unknown as Socket));
   await screen.findByRole("heading", { name: "# general" });
-  return { fetchMock, socket };
+  return app;
 };
 
 const dialog = () => screen.findByRole("dialog");
@@ -202,15 +176,15 @@ test("без сети: удаление канала — ошибка, мода�
 });
 
 test("события сокета: чужой канал появляется, удаление текущего уводит в general", async () => {
-  const { socket } = await openChat();
+  const { emit } = await openChat();
 
-  await socket.emit("newChannel", { id: "50", name: "from bob", removable: true });
+  await emit("newChannel", { id: "50", name: "from bob", removable: true });
   fireEvent.click(screen.getByRole("button", { name: "# from bob" }));
   expect(screen.getByRole("heading", { name: "# from bob" })).toBeTruthy();
 
-  await socket.emit("renameChannel", { id: "50", name: "bob's", removable: true });
+  await emit("renameChannel", { id: "50", name: "bob's", removable: true });
   expect(screen.getByRole("heading", { name: "# bob's" })).toBeTruthy();
 
-  await socket.emit("removeChannel", { id: "50" });
+  await emit("removeChannel", { id: "50" });
   expect(screen.getByRole("heading", { name: "# general" })).toBeTruthy();
 });

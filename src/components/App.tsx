@@ -1,11 +1,10 @@
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
-import { createQueryClient } from "../api.ts";
 import { i18n } from "../i18n.ts";
 import { LoginPage } from "../pages/LoginPage.tsx";
 import { MainPage } from "../pages/MainPage.tsx";
@@ -19,10 +18,9 @@ import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
 // queryClient создаёт init, чтобы обработчики сокета писали в тот же кеш.
-// Без него (в тестах компонентов) App заводит свой.
-export const App = (props: { queryClient?: QueryClient }) => {
+// Поднимать App можно только через init — и в продакшене, и в тестах.
+export const App = ({ queryClient }: { queryClient: QueryClient }) => {
   const user = useAuth((state) => state.user);
-  const [queryClient] = useState(() => props.queryClient ?? createQueryClient());
   // После выхода кеш чистится, чтобы следующий пользователь не увидел чужие данные.
   useEffect(() => {
     if (!user) queryClient.clear();
