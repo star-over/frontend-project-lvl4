@@ -1,29 +1,13 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Socket } from "socket.io-client";
 import { expect, test, vi } from "vitest";
 
 import init from "../src/init.tsx";
+import { fakeSocket } from "./helpers.ts";
 import { useAuth } from "../src/stores/auth.ts";
 
 const channels = [{ id: "1", name: "general", removable: false }];
 const sent = { id: "10", body: "Привет всем", channelId: "1", username: "admin" };
-
-// Заглушка сокета: запоминает обработчики, emit вызывает их, как это сделал бы сервер.
-const fakeSocket = () => {
-  const handlers: Record<string, (payload: unknown) => void> = {};
-  return {
-    on: (event: string, handler: (payload: unknown) => void) => {
-      handlers[event] = handler;
-    },
-    io: { on: () => {} },
-    // TanStack Query уведомляет подписчиков на следующем тике — ждём его внутри act.
-    emit: (event: string, payload: unknown) =>
-      act(async () => {
-        handlers[event]?.(payload);
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }),
-  };
-};
 
 const openChat = async (postMessage: () => Promise<Response>) => {
   const fetchMock = vi.fn<typeof fetch>(async (url, options) => {

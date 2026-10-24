@@ -28,7 +28,7 @@ test("чат загружает каналы и сообщения с токен
   const fetchMock = openChat();
 
   expect(await screen.findByRole("button", { name: "# random" })).toBeTruthy();
-  expect(screen.getByText("# general", { selector: "p" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "# general" })).toBeTruthy();
   expect(screen.getByText("2 сообщения")).toBeTruthy();
   expect(screen.getByText(/Привет!/)).toBeTruthy();
   expect(screen.getByPlaceholderText("Введите сообщение...")).toBeTruthy();
@@ -43,7 +43,7 @@ test("выбор канала показывает его сообщения", a
 
   fireEvent.click(await screen.findByRole("button", { name: "# random" }));
 
-  expect(screen.getByText("# random", { selector: "p" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "# random" })).toBeTruthy();
   expect(screen.getByText("0 сообщений")).toBeTruthy();
   expect(screen.queryByText(/Привет!/)).toBeNull();
 });

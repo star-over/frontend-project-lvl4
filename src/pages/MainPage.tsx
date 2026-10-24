@@ -5,16 +5,16 @@ import {
   Container,
   Flex,
   Loader,
-  NavLink,
   Paper,
   ScrollArea,
-  Stack,
   Text,
   Title,
 } from "@mantine/core";
 import { useEffect, useRef } from "react";
 
 import { useChannels, useMessages } from "../api.ts";
+import { ChannelList } from "../components/ChannelList.tsx";
+import { ChannelModals } from "../components/ChannelModals.tsx";
 import { MessageForm } from "../components/MessageForm.tsx";
 import { useUi } from "../stores/ui.ts";
 
@@ -27,7 +27,6 @@ export const MainPage = () => {
   const channels = useChannels();
   const messages = useMessages();
   const currentChannelId = useUi((state) => state.currentChannelId);
-  const setCurrentChannel = useUi((state) => state.setCurrentChannel);
   const feed = useRef<HTMLDivElement>(null);
 
   // Новое сообщение или смена канала — лента прокручивается к последнему сообщению.
@@ -57,30 +56,20 @@ export const MainPage = () => {
     <Container size="xl" py="md">
       <Paper withBorder shadow="sm" h="calc(100vh - 100px)">
         <Flex h="100%">
-          <Stack w={250} p="md" gap="xs" bg="gray.0">
-            <Title order={4}>Каналы</Title>
-            {channels.data.map(({ id, name }) => (
-              <NavLink
-                key={id}
-                component="button"
-                label={`# ${name}`}
-                fw={700}
-                color="gray"
-                active={id === current?.id}
-                onClick={() => setCurrentChannel(id)}
-              />
-            ))}
-          </Stack>
-          <Flex direction="column" flex={1}>
+          <ChannelList channels={channels.data} currentId={current?.id} />
+          {/* miw={0} даёт колонке сжиматься, иначе длинное имя канала распирает вёрстку. */}
+          <Flex direction="column" flex={1} miw={0}>
             <Box p="md" bg="gray.0">
-              <Text fw={700}># {current?.name}</Text>
+              <Title order={5} lineClamp={1}>
+                # {current?.name}
+              </Title>
               <Text c="dimmed" size="sm">
                 {countMessages(channelMessages.length)}
               </Text>
             </Box>
             <ScrollArea flex={1} p="md" viewportRef={feed}>
               {channelMessages.map(({ id, username, body }) => (
-                <Text key={id} mb="xs">
+                <Text key={id} mb="xs" style={{ overflowWrap: "anywhere" }}>
                   <b>{username}</b>: {body}
                 </Text>
               ))}
@@ -89,6 +78,7 @@ export const MainPage = () => {
           </Flex>
         </Flex>
       </Paper>
+      <ChannelModals />
     </Container>
   );
 };
