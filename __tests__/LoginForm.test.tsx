@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
-import { createServer, renderApp } from "./helpers.ts";
+import { createServer, holdWrites, renderApp } from "./helpers.ts";
 
 const logInAs = async (username: string, password: string, { offline = false } = {}) => {
   const app = await renderApp({ path: "/login", fetch: createServer({ offline }) });
@@ -43,4 +43,18 @@ test("без сети вход показывает «Ошибка соедин�
   expect(await screen.findByText("Ошибка соединения")).toBeTruthy();
   expect(window.location.pathname).toBe("/login");
   expect(screen.queryByText("Неверные имя пользователя или пароль")).toBeNull();
+});
+
+test("пока вход выполняется, кнопка «Войти» заблокирована", async () => {
+  const { fetch, release } = holdWrites();
+  await renderApp({ path: "/login", fetch });
+  fireEvent.change(screen.getByLabelText("Ваш ник"), { target: { value: "admin" } });
+  fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "admin" } });
+  fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+
+  await waitFor(() =>
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Войти" }).disabled).toBe(true),
+  );
+  await release();
+  await waitFor(() => expect(window.location.pathname).toBe("/"));
 });

@@ -88,6 +88,17 @@ export const createServer = ({
   });
 };
 
+// Изменяющие запросы висят, пока тест их не отпустит: видно, что показывает интерфейс в ожидании.
+export const holdWrites = (fetch = createServer()) => {
+  const waiting: (() => void)[] = [];
+  const held = vi.fn<typeof globalThis.fetch>(async (url, options) => {
+    if ((options?.method ?? "GET") !== "GET") await new Promise<void>((r) => waiting.push(r));
+    return fetch(url, options);
+  });
+  const release = () => act(async () => waiting.splice(0).forEach((resolve) => resolve()));
+  return { fetch: held, release };
+};
+
 type RenderOptions = { path?: string; user?: string; fetch?: Mock<typeof fetch> };
 
 // Единственный способ поднять приложение в тестах — тот же, что в продакшене: init(socket).

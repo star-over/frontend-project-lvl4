@@ -1,25 +1,26 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
-import { createServer, renderApp } from "./helpers.ts";
+import { createServer, holdWrites, renderApp } from "./helpers.ts";
 
 // Кроме двух каналов по умолчанию — созданный «custom» со своим сообщением.
-const openChat = async ({ offline = false } = {}) => {
-  const app = await renderApp({
-    user: "admin",
-    fetch: createServer({
-      offline,
-      channels: [
-        { id: "1", name: "general", removable: false },
-        { id: "2", name: "random", removable: false },
-        { id: "3", name: "custom", removable: true },
-      ],
-      messages: [
-        { id: "1", body: "В общем", channelId: "1", username: "admin" },
-        { id: "2", body: "В своём", channelId: "3", username: "admin" },
-      ],
-    }),
+const server = ({ offline = false } = {}) =>
+  createServer({
+    offline,
+    channels: [
+      { id: "1", name: "general", removable: false },
+      { id: "2", name: "random", removable: false },
+      { id: "3", name: "custom", removable: true },
+    ],
+    messages: [
+      { id: "1", body: "В общем", channelId: "1", username: "admin" },
+      { id: "2", body: "В своём", channelId: "3", username: "admin" },
+    ],
   });
+
+const openChat = async ({ offline = false, fetch = server({ offline }) } = {}) => {
+  const app = await renderApp({ user: "admin", fetch });
   await screen.findByRole("heading", { name: "# general" });
   return app;
 };
@@ -32,14 +33,14 @@ const openMenu = async (name: string, item: string) => {
   fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 };
 
-test("новый канал: модалка, Enter отправляет, создатель переходит в канал", async () => {
+test("новый канал: поле в фокусе, Enter отправляет, создатель переходит в канал", async () => {
+  const user = userEvent.setup();
   await openChat();
 
-  fireEvent.click(screen.getByRole("button", { name: "+" }));
-  const modal = await dialog();
-  const input = within(modal).getByLabelText("Имя канала");
-  fireEvent.change(input, { target: { value: "  new channel  " } });
-  fireEvent.submit(input.closest("form")!);
+  await user.click(screen.getByRole("button", { name: "+" }));
+  const input = within(await dialog()).getByLabelText("Имя канала");
+  await waitFor(() => expect(document.activeElement).toBe(input));
+  await user.keyboard("  new channel  {Enter}");
 
   expect(await screen.findByRole("heading", { name: "# new channel" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "# new channel" })).toBeTruthy();
@@ -167,4 +168,48 @@ test("события сокета: чужой канал появляется, �
 
   await emit("removeChannel", { id: "50" });
   expect(screen.getByRole("heading", { name: "# general" })).toBeTruthy();
+});
+
+test("«Отменить» и Escape закрывают модалку без запроса", async () => {
+  const user = userEvent.setup();
+  const { fetchMock } = await openChat();
+
+  await user.click(screen.getByRole("button", { name: "+" }));
+  await user.click(within(await dialog()).getByRole("button", { name: "Отменить" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  await user.click(screen.getByRole("button", { name: "+" }));
+  await dialog();
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  expect(fetchMock.mock.calls.some(([, o]) => o?.method === "POST")).toBe(false);
+});
+
+test("пока запрос висит, кнопки модалок заблокированы", async () => {
+  const { fetch, release } = holdWrites(server());
+  await openChat({ fetch });
+
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  const addModal = await dialog();
+  fireEvent.change(within(addModal).getByLabelText("Имя канала"), { target: { value: "slow" } });
+  fireEvent.click(within(addModal).getByRole("button", { name: "Отправить" }));
+  await waitFor(() =>
+    expect(
+      within(addModal).getByRole<HTMLButtonElement>("button", { name: "Отправить" }).disabled,
+    ).toBe(true),
+  );
+  await release();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+  await openMenu("custom", "Удалить");
+  const removeModal = await dialog();
+  fireEvent.click(within(removeModal).getByRole("button", { name: "Удалить" }));
+  await waitFor(() =>
+    expect(
+      within(removeModal).getByRole<HTMLButtonElement>("button", { name: "Удалить" }).disabled,
+    ).toBe(true),
+  );
+  await release();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });

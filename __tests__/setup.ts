@@ -33,6 +33,7 @@ afterEach(() => {
   // Хранилище уведомлений Mantine глобальное: без очистки тост перетекает в следующий тест.
   notifications.clean();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   useAuth.setState(useAuth.getInitialState());
   useUi.setState(useUi.getInitialState());
   localStorage.clear();

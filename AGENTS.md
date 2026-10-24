@@ -37,6 +37,9 @@
 - Тесты — Vitest + Testing Library в `__tests__/`, окружение jsdom, общий setup — `__tests__/setup.ts` (заглушки `matchMedia` и `ResizeObserver` для Mantine, `Element.scrollTo`, сброс сторов и уведомлений Mantine).
   - Приложение поднимается только через `renderApp({ path, user, fetch })` из `__tests__/helpers.ts` — тем же путём, что в продакшене: `init(fakeSocket())`. `App` без `init` не рендерится (проп `queryClient` обязателен).
   - `fetch` по умолчанию — `createServer()`: сервер в памяти с состоянием, отвечает как `@hexlet/chat-server` (каналы, сообщения, вход `admin`/`admin`, регистрация, `offline`). Нестандартный ответ — свой `vi.fn<typeof fetch>`.
+  - `holdWrites(fetch?)` — изменяющие запросы висят до `release()`: проверка блокировки кнопок на время запроса.
+  - Клавиатура и фокус — через `@testing-library/user-event` (настоящий Enter, Escape, клик переносит фокус) и `document.activeElement`. `fireEvent` — для простого заполнения полей.
+  - Поведение из требований (блокировка кнопок, фокус, автофокус, прокрутка ленты, закрытие модалки) покрыто тестами: Stryker компоненты не мутирует.
   - `emit(event, payload)` из `renderApp` — событие сокета или менеджера (`reconnect`).
   - Правила вне React (функции кеша в `src/api.ts`, `src/channelName.ts`) — property-based тесты на fast-check (`test.prop` из `@fast-check/vitest`): свойства вместо примеров — повтор события не меняет кеш, id не повторяются, после удаления канала нет его сообщений, границы длины имени. Интерфейс и склонения проверяются примерами.
   - `make mutation` — Stryker (`stryker.config.mjs`) по логике вне React: `src/api.ts`, `src/channelName.ts`, `src/profanity.ts`, `src/stores/`. Запуск по требованию (~2 мин), не в `make test`; отчёт — `reports/mutation/index.html`. Выживший мутант — повод добавить проверку, а не цель «100 %»: строки цветов и ключи кеша убивать не нужно.

@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { expect, test } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { expect, test, vi } from "vitest";
 
-import { createServer, renderApp } from "./helpers.ts";
+import { createServer, holdWrites, renderApp } from "./helpers.ts";
 
-const openChat = async ({ offline = false } = {}) => {
-  const app = await renderApp({ user: "admin", fetch: createServer({ offline }) });
+const openChat = async ({ offline = false, fetch = createServer({ offline }) } = {}) => {
+  const app = await renderApp({ user: "admin", fetch });
   await screen.findByText("0 сообщений");
   return app;
 };
@@ -67,4 +68,59 @@ test("мат в сообщении фильтруется до отправки"
   send("you boobs");
 
   await waitFor(() => expect(postedBody(fetchMock).body).toBe("you *****"));
+});
+
+const input = () => screen.getByPlaceholderText<HTMLInputElement>("Введите сообщение...");
+const sendButton = () => screen.getByRole<HTMLButtonElement>("button", { name: "Отправить" });
+
+test("пока запрос висит, кнопка заблокирована; после отправки фокус снова в поле", async () => {
+  const user = userEvent.setup();
+  const { fetch, release } = holdWrites();
+  const { fetchMock } = await openChat({ fetch });
+
+  await user.type(input(), "  Привет  ");
+  await user.click(sendButton());
+
+  await waitFor(() => expect(sendButton().disabled).toBe(true));
+  await release();
+  expect(await screen.findByText(/Привет/)).toBeTruthy();
+  expect(postedBody(fetchMock).body).toBe("Привет");
+  expect(document.activeElement).toBe(input());
+});
+
+test("пустое сообщение и одни пробелы не отправляются", async () => {
+  const user = userEvent.setup();
+  await openChat();
+
+  expect(sendButton().disabled).toBe(true);
+  await user.type(input(), "   ");
+  expect(sendButton().disabled).toBe(true);
+});
+
+test("смена канала возвращает фокус в поле ввода", async () => {
+  const user = userEvent.setup();
+  await openChat();
+
+  await user.click(screen.getByRole("button", { name: "# random" }));
+
+  expect(screen.getByRole("heading", { name: "# random" })).toBeTruthy();
+  expect(document.activeElement).toBe(input());
+});
+
+test("новое сообщение прокручивает ленту вниз", async () => {
+  const { emit } = await openChat();
+  const scrollTo = vi.spyOn(Element.prototype, "scrollTo");
+
+  await emit("newMessage", { id: "11", body: "Новое", channelId: "1", username: "user" });
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: expect.any(Number) });
+});
+
+test("Enter отправляет сообщение", async () => {
+  const user = userEvent.setup();
+  await openChat();
+
+  await user.type(input(), "По Enter{Enter}");
+
+  expect(await screen.findByText(/По Enter/)).toBeTruthy();
 });
