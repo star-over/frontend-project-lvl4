@@ -1,6 +1,5 @@
 import { Button, Group, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { notifications } from "@mantine/notifications";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,13 +18,14 @@ export const MessageForm = ({ channelId }: { channelId: string }) => {
     input.current?.focus();
   }, [channelId]);
 
-  // Пока запрос висит, кнопка заблокирована; при ошибке текст остаётся в поле для повтора.
+  // Пока запрос висит, кнопка заблокирована; при ошибке текст остаётся в поле для повтора,
+  // уведомление показывает слой запросов (src/api.ts).
   const onSubmit = form.onSubmit(async ({ body }) => {
     try {
       await sendMessage.mutateAsync({ body: censor(body.trim()), channelId, username });
       form.reset();
     } catch {
-      notifications.show({ color: "red", message: t("errors.network") });
+      // уведомление об ошибке уже показано
     }
     form.getInputNode("body")?.focus();
   });

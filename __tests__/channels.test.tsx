@@ -11,7 +11,8 @@ import { useUi } from "../src/stores/ui.ts";
 import { fakeSocket } from "./helpers.ts";
 
 // Сервер в памяти: отвечает на запросы каналов так же, как @hexlet/chat-server.
-const openChat = async () => {
+// offline: изменяющие запросы падают, как при пропавшей сети.
+const openChat = async ({ offline = false } = {}) => {
   let channels: Channel[] = [
     { id: "1", name: "general", removable: false },
     { id: "2", name: "random", removable: false },
@@ -25,6 +26,7 @@ const openChat = async () => {
     const path = String(url).replace("/api/v1", "");
     const body = options?.body ? JSON.parse(String(options.body)) : {};
     const id = path.split("/")[2];
+    if (offline && options?.method !== "GET") throw new TypeError("Failed to fetch");
     switch (`${options?.method ?? "GET"} ${path.replace(/\/\d+$/, "/:id")}`) {
       case "GET /channels":
         return Response.json(channels);
@@ -140,6 +142,7 @@ test("удаление с подтверждением уводит в кана�
   expect(screen.queryByRole("button", { name: "# custom" })).toBeNull();
   expect(screen.queryByText(/В своём/)).toBeNull();
   expect(useUi.getState().currentChannelId).toBeNull();
+  expect(await screen.findByText("Канал удалён")).toBeTruthy();
 });
 
 test("removeChannel убирает из кеша канал и все его сообщения", () => {
@@ -173,6 +176,31 @@ test("переименование: поле заполнено текущим �
 
   expect(await screen.findByRole("button", { name: "# renamed" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "# custom" })).toBeNull();
+  expect(await screen.findByText("Канал переименован")).toBeTruthy();
+});
+
+test("без сети: создание канала — ошибка, модалка открыта, канала нет", async () => {
+  await openChat({ offline: true });
+
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  const input = within(await dialog()).getByLabelText("Имя канала");
+  fireEvent.change(input, { target: { value: "new one" } });
+  fireEvent.submit(input.closest("form")!);
+
+  expect(await screen.findByText("Ошибка соединения")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "# new one" })).toBeNull();
+});
+
+test("без сети: удаление канала — ошибка, модалка открыта, канал на месте", async () => {
+  await openChat({ offline: true });
+
+  await openMenu("custom", "Удалить");
+  fireEvent.click(within(await dialog()).getByRole("button", { name: "Удалить" }));
+
+  expect(await screen.findByText("Ошибка соединения")).toBeTruthy();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "# custom" })).toBeTruthy();
 });
 
 test("события сокета: чужой канал появляется, удаление текущего уводит в general", async () => {

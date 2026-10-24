@@ -1,5 +1,6 @@
 import { notifications } from "@mantine/notifications";
 import {
+  MutationCache,
   QueryCache,
   QueryClient,
   useMutation,
@@ -49,9 +50,14 @@ export const authenticate = async (
   useAuth.getState().logIn(await response.json());
 };
 
-// Любая неудачная загрузка данных (сеть, сервер) — всплывающее уведомление.
-// id не даёт сложиться стопке одинаковых уведомлений, когда падают оба запроса.
-// Один повтор вместо трёх: ошибка видна через секунду, а не через семь;
+const notifySuccess = (message: string) => notifications.show({ color: "green", message });
+
+// Обратная связь по серверу собрана здесь, вызывающим её повторять не нужно:
+// - неудачная загрузка данных — «Ошибка загрузки данных» (id не даёт уведомлениям множиться,
+//   когда падают оба запроса);
+// - неудачная мутация (отправка, каналы) — «Ошибка соединения»; вызывающий только решает,
+//   что делать с формой, — исключение из mutateAsync он гасит сам.
+// Один повтор запроса вместо трёх: ошибка видна через секунду, а не через семь;
 // после обрыва связи данные и так перечитываются по reconnect сокета.
 export const createQueryClient = () =>
   new QueryClient({
@@ -63,6 +69,9 @@ export const createQueryClient = () =>
           color: "red",
           message: i18n.t("errors.loading"),
         }),
+    }),
+    mutationCache: new MutationCache({
+      onError: () => notifications.show({ color: "red", message: i18n.t("errors.network") }),
     }),
   });
 
@@ -110,6 +119,7 @@ export const useAddChannel = () => {
     onSuccess: (channel) => {
       addChannel(queryClient, channel);
       useUi.getState().setCurrentChannel(channel.id);
+      notifySuccess(i18n.t("channels.toasts.added"));
     },
   });
 };
@@ -119,7 +129,10 @@ export const useRenameChannel = () => {
   return useMutation({
     mutationFn: ({ id, name }: Pick<Channel, "id" | "name">) =>
       request<Channel>("PATCH", `/channels/${id}`, { name }),
-    onSuccess: (channel) => renameChannel(queryClient, channel),
+    onSuccess: (channel) => {
+      renameChannel(queryClient, channel);
+      notifySuccess(i18n.t("channels.toasts.renamed"));
+    },
   });
 };
 
@@ -127,7 +140,10 @@ export const useRemoveChannel = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => request<Pick<Channel, "id">>("DELETE", `/channels/${id}`),
-    onSuccess: (channel) => removeChannel(queryClient, channel),
+    onSuccess: (channel) => {
+      removeChannel(queryClient, channel);
+      notifySuccess(i18n.t("channels.toasts.removed"));
+    },
   });
 };
 

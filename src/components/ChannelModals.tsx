@@ -1,6 +1,5 @@
 import { Button, Group, Modal, Text, TextInput } from "@mantine/core";
 import { hasLength, useForm } from "@mantine/form";
-import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -17,7 +16,7 @@ import { useUi } from "../stores/ui.ts";
 // как и кнопка, потому что это обычный <form>.
 const ChannelNameForm = (props: {
   initialName: string;
-  onSubmit: (name: string) => Promise<void>;
+  onSubmit: (name: string) => Promise<unknown>;
 }) => {
   const { t } = useTranslation();
   const closeModal = useUi((state) => state.closeModal);
@@ -34,13 +33,14 @@ const ChannelNameForm = (props: {
 
   const inputProps = form.getInputProps("name");
 
+  // Ошибку и успех показывает слой запросов (src/api.ts); при ошибке модалка остаётся открытой.
   const onSubmit = form.onSubmit(async ({ name }) => {
     try {
       // Фильтр мата — и при создании, и при переименовании канала.
       await props.onSubmit(censor(name.trim()));
       closeModal();
     } catch {
-      notifications.show({ color: "red", message: t("errors.network") });
+      // уведомление об ошибке уже показано
     }
   });
 
@@ -69,29 +69,16 @@ const ChannelNameForm = (props: {
 };
 
 const AddChannel = () => {
-  const { t } = useTranslation();
   const addChannel = useAddChannel();
-  return (
-    <ChannelNameForm
-      initialName=""
-      onSubmit={async (name) => {
-        await addChannel.mutateAsync(name);
-        notifications.show({ color: "green", message: t("channels.toasts.added") });
-      }}
-    />
-  );
+  return <ChannelNameForm initialName="" onSubmit={(name) => addChannel.mutateAsync(name)} />;
 };
 
 const RenameChannel = ({ channel }: { channel: Channel }) => {
-  const { t } = useTranslation();
   const renameChannel = useRenameChannel();
   return (
     <ChannelNameForm
       initialName={channel.name}
-      onSubmit={async (name) => {
-        await renameChannel.mutateAsync({ id: channel.id, name });
-        notifications.show({ color: "green", message: t("channels.toasts.renamed") });
-      }}
+      onSubmit={(name) => renameChannel.mutateAsync({ id: channel.id, name })}
     />
   );
 };
@@ -101,15 +88,7 @@ const RemoveChannel = ({ channel }: { channel: Channel }) => {
   const closeModal = useUi((state) => state.closeModal);
   const removeChannel = useRemoveChannel();
 
-  const onRemove = async () => {
-    try {
-      await removeChannel.mutateAsync(channel.id);
-      closeModal();
-      notifications.show({ color: "green", message: t("channels.toasts.removed") });
-    } catch {
-      notifications.show({ color: "red", message: t("errors.network") });
-    }
-  };
+  const onRemove = () => removeChannel.mutate(channel.id, { onSuccess: closeModal });
 
   return (
     <>
