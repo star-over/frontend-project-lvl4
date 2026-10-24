@@ -62,6 +62,7 @@ test("ответ 409 показывает, что пользователь уж�
   fill("admin", "123456", "123456");
 
   expect(await screen.findByText("Такой пользователь уже существует")).toBeTruthy();
+  expect(screen.queryByText("Ошибка соединения")).toBeNull();
   expect(window.location.pathname).toBe("/signup");
   expect(useAuth.getState().user).toBeNull();
 });

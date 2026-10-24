@@ -65,14 +65,27 @@ test.prop([fc.array(event)])("id каналов и сообщений в кеш�
 });
 
 test.prop([fc.array(event), id])(
-  "после удаления канала нет ни его, ни его сообщений",
+  "удаление канала уносит его и только его сообщения",
   (events, removed) => {
     const queryClient = loadedClient();
     for (const e of events) apply(queryClient, e);
+    const before = cache(queryClient);
     removeChannel(queryClient, { id: removed });
     const { channels, messages } = cache(queryClient);
-    expect(channels.some((c) => c.id === removed)).toBe(false);
-    expect(messages.some((m) => m.channelId === removed)).toBe(false);
+    expect(channels).toEqual(before.channels.filter((c) => c.id !== removed));
+    expect(messages).toEqual(before.messages.filter((m) => m.channelId !== removed));
+  },
+);
+
+test.prop([fc.array(event), channel])(
+  "новый канал появляется в кеше, если его там не было",
+  (events, added) => {
+    const queryClient = loadedClient();
+    for (const e of events) apply(queryClient, e);
+    const before = cache(queryClient).channels;
+    addChannel(queryClient, added);
+    const isNew = !before.some((c) => c.id === added.id);
+    expect(cache(queryClient).channels).toEqual(isNew ? [...before, added] : before);
   },
 );
 

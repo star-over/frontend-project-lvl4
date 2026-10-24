@@ -47,6 +47,10 @@ export const createServer = ({
     const body = options?.body ? JSON.parse(String(options.body)) : {};
     const id = path.split("/")[2];
     if (offline && method !== "GET") throw new TypeError("Failed to fetch");
+    // Настоящий сервер без этого заголовка тело не разбирает.
+    if (options?.body && new Headers(options.headers).get("Content-Type") !== "application/json") {
+      return new Response(null, { status: 415 });
+    }
     switch (`${method} ${path.replace(/\/\d+$/, "/:id")}`) {
       case "POST /login":
         return body.username === "admin" && body.password === "admin"

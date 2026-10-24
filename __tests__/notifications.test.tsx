@@ -3,16 +3,18 @@ import { expect, test, vi } from "vitest";
 
 import { renderApp } from "./helpers.ts";
 
-test("ошибка загрузки данных показывает уведомление", async () => {
-  await renderApp({
+test("ошибка загрузки данных показывает одно уведомление на оба запроса", async () => {
+  const { fetchMock } = await renderApp({
     user: "admin",
     fetch: vi.fn<typeof fetch>(async () => new Response(null, { status: 500 })),
   });
 
-  // Текст дважды: плашка на странице и всплывающее уведомление.
-  await waitFor(() => expect(screen.getAllByText("Ошибка загрузки данных")).toHaveLength(2), {
-    timeout: 3000,
-  });
+  // Каналы и сообщения: по попытке и повтору — и только потом считать уведомления.
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4), { timeout: 3000 });
+  // Текст дважды: плашка на странице и одно всплывающее уведомление.
+  await waitFor(() => expect(screen.getAllByText("Ошибка загрузки данных")).toHaveLength(2));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getAllByText("Ошибка загрузки данных")).toHaveLength(2);
 });
 
 test("обрыв сокета показывает уведомление, переподключение его убирает", async () => {
