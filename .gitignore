@@ -2,6 +2,7 @@
 /coverage
 /dist
 /reports
+/tmp
 .stryker-tmp
 
 .DS_Store

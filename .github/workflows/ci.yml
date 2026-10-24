@@ -1,0 +1,33 @@
+name: CI
+
+# Свои проверки на каждый push в master: сборка, тесты (с проверкой переводов) и линтер.
+# hexlet-check.yml генерирует Хекслет — его не трогаем.
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use Node.js 26.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          cache: npm
+
+      - name: Install
+        run: make install
+      - name: Build frontend
+        run: make build
+      - name: Run tests
+        run: make test
+      - name: Run linter
+        run: make lint
