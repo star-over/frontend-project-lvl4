@@ -2,10 +2,10 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
-import { renderApp } from "./helpers.ts";
+import { createServer, renderApp } from "./helpers.ts";
 
-const logInAs = async (username: string, password: string) => {
-  const app = await renderApp({ path: "/login" });
+const logInAs = async (username: string, password: string, { offline = false } = {}) => {
+  const app = await renderApp({ path: "/login", fetch: createServer({ offline }) });
   fireEvent.change(screen.getByLabelText("Ваш ник"), { target: { value: username } });
   fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: password } });
   fireEvent.click(screen.getByRole("button", { name: "Войти" }));
@@ -33,4 +33,14 @@ test("неверный пароль показывает ошибку в фор�
   expect(await screen.findByText("Неверные имя пользователя или пароль")).toBeTruthy();
   expect(window.location.pathname).toBe("/login");
   expect(useAuth.getState().user).toBeNull();
+  // Ожидаемый отказ разбирает форма — общего уведомления об ошибке нет.
+  expect(screen.queryByText("Ошибка соединения")).toBeNull();
+});
+
+test("без сети вход показывает «Ошибка соединения» и остаётся на /login", async () => {
+  await logInAs("admin", "admin", { offline: true });
+
+  expect(await screen.findByText("Ошибка соединения")).toBeTruthy();
+  expect(window.location.pathname).toBe("/login");
+  expect(screen.queryByText("Неверные имя пользователя или пароль")).toBeNull();
 });

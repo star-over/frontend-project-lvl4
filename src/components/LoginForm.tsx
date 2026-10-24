@@ -1,39 +1,29 @@
 import { Button, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
-import { authenticate } from "../api.ts";
+import { isHttpError, useAuthenticate } from "../api.ts";
 
 type Credentials = { username: string; password: string };
 
 export const LoginForm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const authenticate = useAuthenticate("/login");
   const form = useForm<Credentials>({
     mode: "uncontrolled",
     initialValues: { username: "", password: "" },
   });
 
+  // Сеть и прочие ошибки показывает слой запросов; здесь — только неверный пароль.
   const onSubmit = form.onSubmit(async (values) => {
-    let status: number | undefined;
     try {
-      status = await authenticate("/login", values);
-    } catch {
-      notifications.show({ color: "red", message: t("errors.network") });
-      return;
+      await authenticate.mutateAsync(values);
+      navigate("/");
+    } catch (error) {
+      if (isHttpError(error, 401)) form.setFieldError("password", t("login.invalid"));
     }
-
-    if (status === 401) {
-      form.setFieldError("password", t("login.invalid"));
-      return;
-    }
-    if (status) {
-      notifications.show({ color: "red", message: t("errors.network") });
-      return;
-    }
-    navigate("/");
   });
 
   return (

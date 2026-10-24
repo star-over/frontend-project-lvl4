@@ -1,14 +1,14 @@
 import { Button, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { hasLength, isNotEmpty, matchesField, useForm } from "@mantine/form";
-import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
-import { authenticate } from "../api.ts";
+import { isHttpError, useAuthenticate } from "../api.ts";
 
 export const SignupForm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const authenticate = useAuthenticate("/signup");
   const required = isNotEmpty(t("errors.required"));
   const form = useForm({
     mode: "uncontrolled",
@@ -24,24 +24,14 @@ export const SignupForm = () => {
     },
   });
 
+  // Сеть и прочие ошибки показывает слой запросов; здесь — только занятое имя.
   const onSubmit = form.onSubmit(async ({ username, password }) => {
-    let status: number | undefined;
     try {
-      status = await authenticate("/signup", { username, password });
-    } catch {
-      notifications.show({ color: "red", message: t("errors.network") });
-      return;
+      await authenticate.mutateAsync({ username, password });
+      navigate("/");
+    } catch (error) {
+      if (isHttpError(error, 409)) form.setFieldError("username", t("signup.userExists"));
     }
-
-    if (status === 409) {
-      form.setFieldError("username", t("signup.userExists"));
-      return;
-    }
-    if (status) {
-      notifications.show({ color: "red", message: t("errors.network") });
-      return;
-    }
-    navigate("/");
   });
 
   return (

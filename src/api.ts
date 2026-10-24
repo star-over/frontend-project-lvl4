@@ -17,12 +17,30 @@ export type Message = { id: string; body: string; channelId: string; username: s
 const channelsKey = ["channels"];
 const messagesKey = ["messages"];
 
+// Отказ сервера: статус ответа доступен вызывающему (например, 401 на входе, 409 на регистрации).
+export class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
+
+export const isHttpError = (error: unknown, status: number) =>
+  error instanceof HttpError && error.status === status;
+
+// Мутация может пометить ожидаемый отказ: его разбирает форма, общее уведомление не нужно.
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: { expectedStatus?: number };
+  }
+}
+
+// Все запросы к серверу. Токен прикладывается, когда пользователь вошёл.
 const request = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
   const token = useAuth.getState().user?.token;
   const response = await fetch(`/api/v1${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -32,25 +50,23 @@ const request = async <T>(method: string, path: string, body?: unknown): Promise
     useAuth.getState().logOut();
   }
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    throw new HttpError(response.status);
   }
   return response.json();
 };
 
-// Вход и регистрация. Успех — пользователь сохраняется, возвращается undefined;
-// отказ сервера — его HTTP-статус (401, 409); сетевой сбой — исключение.
-export const authenticate = async (
-  path: "/login" | "/signup",
-  credentials: { username: string; password: string },
-): Promise<number | undefined> => {
-  const response = await fetch(`/api/v1${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
+type Credentials = { username: string; password: string };
+
+// Вход и регистрация. Успех — пользователь сохранён. Ожидаемый отказ (неверный пароль —
+// 401, имя занято — 409) приходит вызывающему как HttpError без общего уведомления;
+// сеть и прочие ошибки — «Ошибка соединения», как у всех мутаций.
+export const useAuthenticate = (path: "/login" | "/signup") =>
+  useMutation({
+    mutationFn: (credentials: Credentials) =>
+      request<{ token: string; username: string }>("POST", path, credentials),
+    onSuccess: (user) => useAuth.getState().logIn(user),
+    meta: { expectedStatus: path === "/login" ? 401 : 409 },
   });
-  if (!response.ok) return response.status;
-  useAuth.getState().logIn(await response.json());
-};
 
 const notifySuccess = (message: string) => notifications.show({ color: "green", message });
 
@@ -76,7 +92,11 @@ export const createQueryClient = () =>
         }),
     }),
     mutationCache: new MutationCache({
-      onError: () => notifications.show({ color: "red", message: i18n.t("errors.network") }),
+      onError: (error, _variables, _context, mutation) => {
+        const expected = mutation.meta?.expectedStatus;
+        if (expected && isHttpError(error, expected)) return;
+        notifications.show({ color: "red", message: i18n.t("errors.network") });
+      },
     }),
   });
 

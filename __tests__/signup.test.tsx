@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 
 import { useAuth } from "../src/stores/auth.ts";
 import { renderApp } from "./helpers.ts";
@@ -64,6 +64,19 @@ test("ответ 409 показывает, что пользователь уж�
   expect(await screen.findByText("Такой пользователь уже существует")).toBeTruthy();
   expect(window.location.pathname).toBe("/signup");
   expect(useAuth.getState().user).toBeNull();
+});
+
+test("сбой сервера при регистрации — «Ошибка соединения», форма на месте", async () => {
+  await renderApp({
+    path: "/signup",
+    fetch: vi.fn<typeof fetch>(async () => new Response(null, { status: 500 })),
+  });
+
+  fill("newuser", "123456", "123456");
+
+  expect(await screen.findByText("Ошибка соединения")).toBeTruthy();
+  expect(window.location.pathname).toBe("/signup");
+  expect(screen.queryByText("Такой пользователь уже существует")).toBeNull();
 });
 
 test("вошедшего пользователя /signup отправляет в чат", async () => {
