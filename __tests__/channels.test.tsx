@@ -96,7 +96,7 @@ test("меню есть только у созданных каналов", asyn
   const menus = screen.getAllByRole("button", { name: "Управление каналом" });
 
   expect(menus).toHaveLength(1);
-  expect(menus[0].parentElement!.textContent).toContain("# custom");
+  expect(within(menus[0].parentElement!).getByRole("button", { name: "# custom" })).toBeTruthy();
 });
 
 test("удаление с подтверждением уводит в канал по умолчанию и убирает сообщения", async () => {

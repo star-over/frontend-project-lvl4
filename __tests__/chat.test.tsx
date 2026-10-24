@@ -34,6 +34,8 @@ test("выбор канала показывает его сообщения", a
   fireEvent.click(await screen.findByRole("button", { name: "# random" }));
 
   expect(screen.getByRole("heading", { name: "# random" })).toBeTruthy();
+  // Проверка Хекслета ищет текущий канал по тексту «# имя»: он должен быть один — в заголовке.
+  expect(screen.getByText("# random").tagName).toBe("H5");
   expect(screen.getByText("0 сообщений")).toBeTruthy();
   expect(screen.queryByText(/Привет!/)).toBeNull();
 });

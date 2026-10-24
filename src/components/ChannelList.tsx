@@ -1,4 +1,14 @@
-import { ActionIcon, Group, Menu, NavLink, ScrollArea, Stack, Text, Title } from "@mantine/core";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Menu,
+  NavLink,
+  ScrollArea,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { useTranslation } from "react-i18next";
 
 import { useChannels } from "../api.ts";
@@ -22,12 +32,22 @@ export const ChannelList = () => {
       <ScrollArea flex={1} scrollbars="y">
         {channels.map((channel) => (
           <Group key={channel.id} gap={0} wrap="nowrap">
-            {/* miw={0}: длинное имя обрезается многоточием, кнопка меню остаётся видна. */}
+            {/* miw={0}: длинное имя обрезается многоточием, кнопка меню остаётся видна.
+                Текст «# имя» один на странице — в заголовке канала (по нему ищет проверка):
+                здесь «#» отделён отступом, а имя кнопки для поиска по роли — в aria-label. */}
             <NavLink
               flex={1}
               miw={0}
               component="button"
-              label={<Text fw={700} truncate>{`# ${channel.name}`}</Text>}
+              aria-label={`# ${channel.name}`}
+              label={
+                <Text fw={700} truncate>
+                  <Box component="span" mr={4}>
+                    #
+                  </Box>
+                  {channel.name}
+                </Text>
+              }
               color="gray"
               active={channel.id === currentId}
               onClick={() => setCurrentChannel(channel.id)}
