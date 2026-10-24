@@ -75,6 +75,25 @@ test("новый канал: модалка, Enter отправляет, соз�
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
+test("мат в имени нового канала фильтруется", async () => {
+  await openChat();
+
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  const input = within(await dialog()).getByLabelText("Имя канала");
+  fireEvent.change(input, { target: { value: "boobs" } });
+  fireEvent.submit(input.closest("form")!);
+
+  expect(await screen.findByRole("heading", { name: "# *****" })).toBeTruthy();
+
+  // Другое матерное слово той же длины после фильтра совпадает с «*****».
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  const modal = await dialog();
+  const again = within(modal).getByLabelText("Имя канала");
+  fireEvent.change(again, { target: { value: "bitch" } });
+  fireEvent.submit(again.closest("form")!);
+  expect(await within(modal).findByText("Должно быть уникальным")).toBeTruthy();
+});
+
 test("имя канала проверяется: длина 3–20 и уникальность", async () => {
   const { fetchMock } = await openChat();
 

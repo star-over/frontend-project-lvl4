@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSendMessage } from "../api.ts";
+import { censor } from "../profanity.ts";
 import { useAuth } from "../stores/auth.ts";
 
 export const MessageForm = ({ channelId }: { channelId: string }) => {
@@ -21,7 +22,7 @@ export const MessageForm = ({ channelId }: { channelId: string }) => {
   // Пока запрос висит, кнопка заблокирована; при ошибке текст остаётся в поле для повтора.
   const onSubmit = form.onSubmit(async ({ body }) => {
     try {
-      await sendMessage.mutateAsync({ body: body.trim(), channelId, username });
+      await sendMessage.mutateAsync({ body: censor(body.trim()), channelId, username });
       form.reset();
     } catch {
       notifications.show({ color: "red", message: t("errors.network") });

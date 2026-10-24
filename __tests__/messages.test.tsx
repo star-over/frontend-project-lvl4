@@ -80,3 +80,15 @@ test("при обрыве сети текст остаётся в поле и п
   );
   expect(screen.getByText("0 сообщений")).toBeTruthy();
 });
+
+test("мат в сообщении фильтруется до отправки", async () => {
+  const { fetchMock } = await openChat(async () => Response.json(sent));
+
+  send("you boobs");
+
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.some(([, o]) => o?.method === "POST")).toBe(true),
+  );
+  const [, options] = fetchMock.mock.calls.find(([, o]) => o?.method === "POST")!;
+  expect(JSON.parse(String(options?.body)).body).toBe("you *****");
+});

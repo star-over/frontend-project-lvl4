@@ -10,6 +10,7 @@ import {
   useRemoveChannel,
   useRenameChannel,
 } from "../api.ts";
+import { censor } from "../profanity.ts";
 import { useUi } from "../stores/ui.ts";
 
 // Форма имени канала общая для добавления и переименования: Enter отправляет её,
@@ -26,7 +27,8 @@ const ChannelNameForm = (props: {
     validate: {
       name: (value) =>
         hasLength({ min: 3, max: 20 }, t("errors.length"))(value.trim()) ??
-        (names.includes(value.trim()) ? t("channels.unique") : null),
+        // Уникальность — по имени после фильтра: оно и уйдёт на сервер.
+        (names.includes(censor(value.trim())) ? t("channels.unique") : null),
     },
   });
 
@@ -34,7 +36,8 @@ const ChannelNameForm = (props: {
 
   const onSubmit = form.onSubmit(async ({ name }) => {
     try {
-      await props.onSubmit(name.trim());
+      // Фильтр мата — и при создании, и при переименовании канала.
+      await props.onSubmit(censor(name.trim()));
       closeModal();
     } catch {
       notifications.show({ color: "red", message: t("errors.network") });
