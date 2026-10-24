@@ -1,3 +1,4 @@
+import { notifications } from "@mantine/notifications";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
@@ -25,6 +26,8 @@ Element.prototype.scrollTo = () => {};
 
 afterEach(() => {
   cleanup();
+  // Хранилище уведомлений Mantine глобальное: без очистки тост перетекает в следующий тест.
+  notifications.clean();
   vi.unstubAllGlobals();
   useAuth.setState(useAuth.getInitialState());
   useUi.setState(useUi.getInitialState());

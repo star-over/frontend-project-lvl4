@@ -28,6 +28,7 @@ export const fakeSocket = () => {
 type ServerOptions = { channels?: Channel[]; messages?: Message[]; offline?: boolean };
 
 // Сервер в памяти: отвечает так же, как @hexlet/chat-server.
+// Изменения сохраняются: после reconnect перечитывание видит то же, что вернул сервер.
 // Созданные каналы и сообщения получают id по порядку: "100", "101", …
 // Вход — admin/admin (иначе 401); регистрация admin — 409.
 // offline: изменяющие запросы падают, как при пропавшей сети.
@@ -64,9 +65,13 @@ export const createServer = ({
         channels = [...channels, channel];
         return Response.json(channel);
       }
-      case "PATCH /channels/:id":
-        return Response.json({ ...channels.find((c) => c.id === id), name: body.name });
+      case "PATCH /channels/:id": {
+        channels = channels.map((c) => (c.id === id ? { ...c, name: body.name } : c));
+        return Response.json(channels.find((c) => c.id === id));
+      }
       case "DELETE /channels/:id":
+        channels = channels.filter((c) => c.id !== id);
+        messages = messages.filter((m) => m.channelId !== id);
         return Response.json({ id });
       case "POST /messages": {
         const message = { ...body, id: String(nextId++) };
